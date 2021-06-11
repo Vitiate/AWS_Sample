@@ -1,0 +1,118 @@
+Version: 3
+
+Blueprints:
+  vpc:
+    Order: 1
+    Region: us-west-2
+    Template: ./templates/vpc.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+  routetable:
+    Order: 2
+    Region: us-west-2
+    Template: ./templates/route-table.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+  subnet:
+    Order: 3
+    Region: us-west-2
+    Template: ./templates/subnet.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+  route-table-association:
+    Order: 4
+    Region: us-west-2
+    Template: ./templates/route-table-association.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+  transit-gateway-attachment:
+    Order: 5
+    Region: us-west-2
+    Template: ./templates/tgw-attachment.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+  route:
+    Order: 6
+    Region: us-west-2
+    Template: ./templates/route.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+Stages:
+  demo:
+    vpc:
+      Extends: vpc
+      StackName: base-vpc
+      Parameters:
+        VpcName: demo-vpc
+        VpcCidr: 10.0.0.0/24
+    routetable-private:
+      Extends: routetable
+      StackName: base-private-route-table
+      Parameters:
+        RouteTableName: vpc-private-route-table 
+        VpcId: ${demo.vpc.VpcId}
+    private-subnet0:
+      Extends: subnet
+      StackName: base-private-subnet0
+      Parameters:
+        VpcId: ${demo.vpc.VpcId}
+        AvailabilityZone: "0"
+        PublicZone: False
+        CidrBlock: 10.0.0.0/27
+    private-subnet1:
+      Extends: subnet
+      StackName: base-private-subnet1
+      Parameters:
+        VpcId: ${demo.vpc.VpcId}
+        AvailabilityZone: "1"
+        PublicZone: False
+        CidrBlock: 10.0.0.32/27
+    private-subnet2:
+      Extends: subnet
+      StackName: base-private-subnet2
+      Parameters:
+        VpcId: ${demo.vpc.VpcId}
+        AvailabilityZone: "2"
+        PublicZone: False
+        CidrBlock: 10.0.0.64/27
+    route-table-association0:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet0
+      Parameters:
+        RouteTableId: ${demo.routetable-private.RouteTableId}
+        SubnetId: ${demo.private-subnet0.SubnetId}
+    route-table-association1:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet1
+      Parameters:
+        RouteTableId: ${demo.routetable-private.RouteTableId}
+        SubnetId: ${demo.private-subnet1.SubnetId}
+    route-table-association2:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet2
+      Parameters:
+        RouteTableId: ${demo.routetable-private.RouteTableId}
+        SubnetId: ${demo.private-subnet2.SubnetId}
+    transit-gateway-attachment:
+      Extends: transit-gateway-attachment
+      StackName: base-transit-gateway-attachment
+      Parameters:
+        VpcId: ${demo.vpc.VpcId}
+        TransitGatewayId: <TRANSIT_GATEWAY>
+        Subnet0: ${demo.private-subnet0.SubnetId}
+        Subnet1: ${demo.private-subnet1.SubnetId}
+        Subnet2: ${demo.private-subnet2.SubnetId}
+    route-tgw:
+      Extends: route
+      StackName: base-transit-gateway-route
+      Parameters:
+        RouteTableId: ${demo.routetable-private.RouteTableId}
+        CidrBlock: 0.0.0.0/0
+        TargetId: <TRANSIT_GATEWAY>
+        TargetType: TransitGateway

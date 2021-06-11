@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Adds a Route to a route table
+
+Parameters:
+  RouteTableId:
+    Type: String
+    Description: Id of Route table to associate
+
+  CidrBlock:
+    Type: String
+    Description: Cidr Block to Route
+
+  TargetId:
+    Type: String
+    Description: The Target to route to
+
+  TargetType:
+    Type: String
+    Description: The Target type, NatGateway, TransitGateway, EgressOnlyInternetGateway
+
+Conditions:
+  IfNatGateway: !Equals
+    - !Ref TargetType
+    - NatGateway
+
+  IfTransitGateway: !Equals
+    - !Ref TargetType
+    - TransitGateway
+
+  IfGateway: !Equals
+    - !Ref TargetType
+    - Gateway
+
+  IfCarrierGateway: !Equals
+    - !Ref TargetType
+    - CarrierGateway
+
+  IfEgressOnlyInternetGateway: !Equals
+    - !Ref TargetType
+    - EgressOnlyInternetGateway
+
+  IfInstance: !Equals
+    - !Ref TargetType
+    - InstanceId
+
+  IfLocalGateway: !Equals
+    - !Ref TargetType
+    - LocalGateway
+
+  IfNetworkInterface: !Equals
+    - !Ref TargetType
+    - NetworkInterface
+
+  IfVpcPeeringConnection: !Equals
+    - !Ref TargetType
+    - VpcPeeringConnection
+
+Resources:
+
+  RouteToNat:
+    Type: AWS::EC2::Route
+    Condition: IfNatGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      NatGatewayId: !Ref TargetId
+
+  RouteToGateway:
+    Type: AWS::EC2::Route
+    Condition: IfGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      GatewayId: !Ref TargetId
+
+  RouteToCarrierGateway:
+    Type: AWS::EC2::Route
+    Condition: IfCarrierGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      CarrierGatewayId: !Ref TargetId
+
+  RouteToEgressOnlyInternetGateway:
+    Type: AWS::EC2::Route
+    Condition: IfEgressOnlyInternetGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      EgressOnlyInternetGatewayId: !Ref TargetId
+
+  RouteToInstance:
+    Type: AWS::EC2::Route
+    Condition: IfInstance
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      InstanceId: !Ref TargetId
+
+  RouteLocalGateway:
+    Type: AWS::EC2::Route
+    Condition: IfLocalGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      LocalGatewayId: !Ref TargetId
+
+  RouteNetworkInterface:
+    Type: AWS::EC2::Route
+    Condition: IfNetworkInterface
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      NetworkInterfaceId: !Ref TargetId
+
+  RouteVpcPeeringConnection:
+    Type: AWS::EC2::Route
+    Condition: IfVpcPeeringConnection
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      VpcPeeringConnectionId: !Ref TargetId
+
+  RouteToTgw:
+    Type: AWS::EC2::Route
+    Condition: IfTransitGateway
+    Properties:
+      DestinationCidrBlock: !Ref CidrBlock
+      RouteTableId:  !Ref RouteTableId
+      TransitGatewayId: !Ref TargetId

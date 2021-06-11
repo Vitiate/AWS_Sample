@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Defines a route table
+
+Parameters:
+  VpcId:
+    Type: String
+    Description: The ID of the VPC to add the subnet to
+  RouteTableName:
+    Type: String
+    Description: The name of the routetable to create
+
+Resources:
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref "VpcId"
+      Tags:
+        - Key: Name
+          Value: !Ref RouteTableName
+Outputs:
+  RouteTableId:
+    Value: !Ref RouteTable 
