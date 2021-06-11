@@ -1,0 +1,136 @@
+Version: 3
+
+Blueprints:
+  client-auth-function:
+    Order: 1
+    Template: ./templates/lambda-auth.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+
+  client-vpn:
+    Order: 2
+    Template: ./templates/clientvpn-endpoint-cloudformation.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+
+  client-vpn-routes:
+    Order: 3
+    Template: ./templates/clientvpn-routes.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+
+  client-cidr-auth:
+    Order: 3
+    Template: ./templates/authorizations.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+
+#######################################################################################
+#
+# Prior to deploying these templates a Private certificate needs to be created using a
+# private CA and ACM, also a IAM IDP Provider needs to be created and config-
+# red to authenticate against an Azure-AD SSO Application:
+# Azure - Enterprise Apps - SSO - Change Basic SAML Configuration
+# Identifier id (Entity ID) : urn:amazon:webservices:clientvpn
+# Reply URL (Assertion Consumer Service URL) : https://127.0.0.1:35001
+# Add https://self-service.clientvpn.amazonaws.com/api/auth/sso/saml
+# as and additional reply url in the azure enterprise connector.
+# Azure - Enterprise Apps - SSO - Change User Attributes & Claims
+# nameidentifier - Source attribute : userprincipalname
+# **CLEAR ALL CLAIMS
+# Add new claim - Name : FirstName Source attribute user.givenname
+# Add new claim - Name : LastName Source attribute user.surname
+# Add a group claim - Name : memberOf Source attribute user.groups AllGroups (groupId) !! This attribute is CASE SENSITIVE!
+#
+# Azure - Enterprise Apps - SSO - Change SAML Signing Certificate
+# Change - Signing Options to Sign SAML response and assertion
+#
+# Now the hack - Azure does not allow the reply URL to be http, however you can fix this !! This no longer needs to be done
+# find the App in Azure - App registrations - Change manifest
+# and modify the XML changing the replyUrlsWithType to http
+#
+#
+# "replyUrlsWithType": [
+# {
+# "url": "http://127.0.0.1:35001",
+# "type": "Web"
+# }
+# ],
+#
+# Azure - Enterprise Apps - Users and Groups
+# add your users / groups
+#
+# Azure - Enterprise Apps - Download XML
+# Click the Federation Metadata XML and download the XML file
+#
+# AWS - new IAM Identity Provider
+# Upload the XML file that Azure gave you (upload metadata)
+
+#
+#######################################################################################
+
+Stages:
+  AuthFunctions:
+    Default:
+      Extends: client-auth-function
+      StackName: client-vpn-default-auth-function-poc
+      Parameters:
+        EndpointName: ClientVpn-Endpoint-poc
+        AssociatedSubnets: "<subnet-id>,<subnet-id>"
+        VPNVpcId: vpc-123456
+
+  Endpoints:
+    Default:
+      Extends: client-vpn
+      StackName: client-vpn-default-endpoint-poc
+      Parameters:
+        ClientVPNEndpointAuthorizationLambdaArn: ${AuthFunctions.Default.ClientVPNEndpointId}
+        AssociatedSubnets: <subnet-id>,<subnet-id>
+        Authentication: IAM SAML Provider (Federation)
+        AuthenticationId: arn:aws:iam::<ACCOUNT_ID>:saml-provider/Client-Vpn-poc
+        ClientVPNCidrBlock: "192.168.240.0/20"
+        EndpointDescription: Default Client VPN Endpoint
+        EndpointName: ClientVpn-Endpoint-poc
+        ServerCertificateArn: arn:aws:acm:us-west-2:<ACCOUNT_ID>:certificate/<CERTIFICATE_GUID>
+        SplitTunnel: True
+        DNSServers: "<DNS_SERVER>,<DNS_SERVER>"
+        VPNVpcId: vpc-123456
+
+  #  Using a split tunnel.
+  Routes:
+    route-a:
+      Extends: client-vpn-routes
+      StackName: client-vpn-route-10-13-poc
+      Parameters:
+        AssociatedSubnets: <subnet-id>,<subnet-id>
+        ClientVpnEndpointId: ${Endpoints.Default.ClientVPNEndpointId}
+        Cidr: 10.0.0.0/8
+    route-b:
+      Extends: client-vpn-routes
+      StackName: client-vpn-route-172-16-12-poc
+      Parameters:
+        AssociatedSubnets: <subnet-id>,<subnet-id>
+        ClientVpnEndpointId: ${Endpoints.Default.ClientVPNEndpointId}
+        Cidr: 172.16.0.0/12
+
+  Authorizations:
+    client-cidr-auth1:
+      Extends: client-cidr-auth
+      StackName: client-vpn-default-cidr-auth-10-16-poc
+      Parameters:
+        AccessGroupId: 3216a9cc-0029-43c2-9b8f-cec190bce8aa
+        ClientVpnEndpointId: ${Endpoints.Default.ClientVPNEndpointId}
+        TargetCidr: "10.0.0.0/8"
+        Description: Allow access from GroupName to 10.0.0.0/8
+    client-cidr-auth2:
+      Extends: client-cidr-auth
+      StackName: client-vpn-default-172-16-12-poc
+      Parameters:
+        AccessGroupId: 3216a9cc-0029-43c2-9b8f-cec190bce8aa
+        ClientVpnEndpointId: ${Endpoints.Default.ClientVPNEndpointId}
+        TargetCidr: "172.16.0.0/12"
+        Description: Allow access from GroupName to 172.16.0.0/12

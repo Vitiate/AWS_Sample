@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Creates a lambda function to validate VPN connections
+
+Parameters:
+  EndpointName:
+    Type: String
+    Description: Name of the client vpn endpoint
+
+  AssociatedSubnets:
+    Type: CommaDelimitedList
+    Description: You must select two (2)
+
+  VPNVpcId:
+    Type: AWS::EC2::VPC::Id
+
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - W1020
+        - W3005
+        - W1019
+
+Resources:
+  ConnectionAuthorizationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: LambdaFunctionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/AWSClientVPN-${EndpointName}Authorization:*
+
+  LambdaVPNSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub Security Group for Lambda function AWSClientVPN-${EndpointName}Authorization
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Egress to all CIDR
+      VpcId: !Ref VPNVpcId
+
+  ClientVPNEndpointAuthorizationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.8
+      Timeout: 10
+      Handler: index.handler
+      FunctionName: !Sub AWSClientVPN-${EndpointName}Authorization
+      Role: !GetAtt ConnectionAuthorizationLambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaVPNSecurityGroup
+        SubnetIds:
+          - !Select [0, !Ref AssociatedSubnets]
+          - !Select [1, !Ref AssociatedSubnets]
+      Code:
+        ZipFile: !Sub
+          - |-
+            import os, json
+            def handler(event, context):
+                print("Received event: " + json.dumps(event, indent=2))   
+                response = dict()
+                response["allow"] = True
+                response["error-msg-on-failed-posture-compliance"] = ""
+                response["posture-compliance-statuses"] = ["compliant"]
+                response["schema-version"] = "v1"
+
+                return response
+          - lambda_function_role_arn: !Ref ConnectionAuthorizationLambdaRole
+
+Outputs:
+  ClientVPNEndpointId:
+    Value: !GetAtt ClientVPNEndpointAuthorizationLambda.Arn

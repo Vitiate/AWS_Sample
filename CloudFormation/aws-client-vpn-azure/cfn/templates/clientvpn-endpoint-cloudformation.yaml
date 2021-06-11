@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Creates a client VPN endpoint with specified options and an authorization 
+  Lambda with inline code that currently allows all requests. It associates 
+  the endpoint with 2 subnets and creates a security group allowing traffic 
+  from the specified ClientVPNCidrBlock. If split tunnel is False, then 
+  the CloudFormation will also route 0.0.0.0/0 through the subnet associations.
+  All traffic from all users will be routed.
+
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - W1020
+        - W3005
+
+# Note: You can increase the number of subnets by copying the ClientVPNSubnetAssociation resource
+# at the end of this template and reference the 3rd index ([2]) of the AssociatedSubnets list
+Parameters:
+  AssociatedSubnets:
+    Type: CommaDelimitedList
+    Description: You must select two (2)
+  Authentication:
+    Type: String
+    AllowedValues:
+      - IAM SAML Provider (Federation)
+      - AWS Active Directory
+    Default: IAM SAML Provider (Federation)
+    Description: Select between authenticating using an IAM SAML Provider or Directory Service Active Directory
+  AuthenticationId:
+    Type: String
+    Description: Enter the IAM SAML Provider ARN, or the AWS Active Directory ID
+    Default: arn:aws:iam::525811996306:saml-provider/Client-Vpn-poc
+  ClientVPNCidrBlock:
+    Type: String
+    Description: The CIDR range used to allocate IPs to VPN Clients. Must not overlap with other subnets.
+    Default: 10.9.192.0/20
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(3[0-2]|[1-2][0-9]|[0-9]))$
+  EndpointDescription:
+    Type: String
+    Default: Default Client VPN Endpoint
+  EndpointName:
+    Type: String
+    Default: AWSVPN-Endpoint
+  ServerCertificateArn:
+    Type: String
+    Default: arn:aws:acm:us-west-2:525811996306:certificate/1dc8c8dd-bc47-4e25-8c5a-dc734a45c345
+  SplitTunnel:
+    Type: String
+    AllowedValues:
+      - True
+      - False
+    Default: True
+  DNSServers:
+    Type: CommaDelimitedList
+    Description: List of DNS Servers to apply to endpoint
+  ClientVPNEndpointAuthorizationLambdaArn:
+    Type: String
+    Description: Arn of the Authorization Lambda function
+  VPNVpcId:
+    Type: AWS::EC2::VPC::Id
+
+Conditions:
+  IsActiveDirectoryAuth: !Equals
+    - "AWS Active Directory"
+    - !Ref Authentication
+
+Resources:
+  ClientVPNEndpoint:
+    Type: AWS::EC2::ClientVpnEndpoint
+    Properties:
+      DnsServers: !Ref DNSServers
+      AuthenticationOptions:
+        - !If
+          - IsActiveDirectoryAuth
+          - ActiveDirectory:
+              DirectoryId: !Ref AuthenticationId
+            Type: directory-service-authentication
+          - FederatedAuthentication:
+              SAMLProviderArn: !Ref AuthenticationId
+            Type: federated-authentication
+      ClientCidrBlock: !Ref ClientVPNCidrBlock
+      ClientConnectOptions:
+        Enabled: True
+        LambdaFunctionArn: !Ref ClientVPNEndpointAuthorizationLambdaArn
+      ConnectionLogOptions:
+        CloudwatchLogGroup: !Ref ClientVPNLogGroup
+        Enabled: True
+      Description: !Ref EndpointDescription
+      SecurityGroupIds:
+        - !Ref ClientVPNSecurityGroup
+      SelfServicePortal: enabled
+      ServerCertificateArn: !Ref ServerCertificateArn
+      SplitTunnel: !Ref SplitTunnel
+      VpcId: !Ref VPNVpcId
+
+  # TODO: Either create CMK in CFN or provide parameter
+  ClientVPNLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+    Properties:
+      #KmsKeyId: String
+      LogGroupName: !Sub /client-vpn/${EndpointName}
+      RetentionInDays: 90
+
+  ClientVPNSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: Need to be fully open
+          - id: W5
+          - id: W42
+    Properties:
+      GroupDescription: !Sub Default security representing ClientVPN clients for endpoint ${EndpointName}
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: "0.0.0.0/0"
+          Description: Forward all traffic into the tgw
+      VpcId: !Ref VPNVpcId
+
+  ClientVPNSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ClientVPNSecurityGroup
+      Description: Allow all In
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref ClientVPNSecurityGroup
+
+  ClientVPNSubnetAssociation1:
+    Type: AWS::EC2::ClientVpnTargetNetworkAssociation
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVPNEndpoint
+      SubnetId: !Select [0, !Ref AssociatedSubnets]
+
+  ClientVPNSubnetAssociation2:
+    Type: AWS::EC2::ClientVpnTargetNetworkAssociation
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVPNEndpoint
+      SubnetId: !Select [1, !Ref AssociatedSubnets]
+
+Outputs:
+  ClientVPNEndpointId:
+    Value: !Ref ClientVPNEndpoint

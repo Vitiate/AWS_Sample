@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Creates a client VPN authorizations. The Access Group Id is the Guid Object ID of the security group
+  in Azure AD Groups. The Client VPN Endpoint is the Endpoint Id.
+
+Parameters:
+  AccessGroupId:
+    Type: String
+    Description: The Guid Object ID from Azure AD Groups
+
+  ClientVpnEndpointId:
+    Type: String
+    Description: The Client Vpn Endpoint Id
+
+  TargetCidr:
+    Type: String
+    Description: The Target Cidr to allow
+
+  Description:
+    Type: String
+    Description: The description to apply to the rule
+
+Resources:
+  AuthorizationRule:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      AuthorizeAllGroups: false
+      AccessGroupId: !Ref AccessGroupId
+      ClientVpnEndpointId: !Ref ClientVpnEndpointId
+      Description: !Ref Description
+      TargetNetworkCidr: !Ref TargetCidr

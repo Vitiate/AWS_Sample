@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Creates routing for the client vpn
+
+Metadata:
+  cfn-lint:
+    config:
+      ignore_checks:
+        - W1020
+        - W3005
+
+# Note: You can increase the number of subnets by copying the ClientVPNSubnetAssociation resource
+# at the end of this template and reference the 3rd index ([2]) of the AssociatedSubnets list
+Parameters:
+  AssociatedSubnets:
+    Type: CommaDelimitedList
+    Description: You must select two (2)
+
+  ClientVpnEndpointId:
+    Type: String
+    Description: The Client Vpn Endpoint Id
+
+  Cidr:
+    Type: String
+    Description: The cidr to route
+
+Resources:
+  #  # Internet Route for subnet 1 - will only be created if SplitTunnel is set to False
+  ClientVPNInternetRouteSubnet1:
+    Type: AWS::EC2::ClientVpnRoute
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVpnEndpointId
+      Description: !Sub Allows access from all clients to the internet through subnet ${!Select [0, !Ref !Split[",", !Ref AssociatedSubnets]}
+      DestinationCidrBlock: !Ref Cidr
+      TargetVpcSubnetId: !Select [0, !Ref AssociatedSubnets]
+
+    # Internet Route for subnet 2 - will only be created if SplitTunnel is set to False
+  ClientVPNInternetRouteSubnet2:
+    Type: AWS::EC2::ClientVpnRoute
+    Properties:
+      ClientVpnEndpointId: !Ref ClientVpnEndpointId
+      Description: !Sub Allows access from all clients to the internet through subnet ${!Select [1, !Ref AssociatedSubnets]}
+      DestinationCidrBlock: !Ref Cidr
+      TargetVpcSubnetId: !Select [1, !Ref AssociatedSubnets]
