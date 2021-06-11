@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  SlackWebHookUrl:
+    Description: "This is the slack provided web hook URL to send notifications to, set to no_value to not use."
+    Type: String
+    Default: no_value
+  SNSTopic:
+    Description: "This is the sns to send a notification to, if there is no sns queue to notify leave it as no_value"
+    Type: String
+    Default: no_value
+  TestTag:
+    Description: "This is the tag to look for to exclude a s3 bucket from automatic changes"
+    Type: String
+    Default: s3:PublicBlock:Bypass
+
+Globals:
+  Function:
+    Timeout: 100
+
+Conditions:
+  SNSTopicSet: !Not
+    - !Equals
+      - !Ref SNSTopic
+      - no_value
+
+Resources:
+  #==================================================
+  # Permission that allows the Lambda Function to
+  # apply the public block to an s3 bucket and
+  # to notify the sns bucket of changes
+  #==================================================
+
+  S3ChangeAutoResponseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: s3Modification
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowS3Actions
+                Effect: Allow
+                Action:
+                  - s3:GetBucketTagging
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:GetBucketPublicAccessBlock
+                Resource: !Sub arn:aws:s3:::*
+        - !If
+          - SNSTopicSet
+          - PolicyName: WriteToSNS
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Sid: AllowSNSActions
+                  Effect: Allow
+                  Action:
+                    - sns:Publish
+                  Resource:
+                    - !Ref SNSTopic
+          - !Ref AWS::NoValue
+
+  #==================================================
+  # Permission that allows the CloudWatch service to
+  # execute the Lambda function.
+  #==================================================
+  S3AutoResponseLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      FunctionName: !Ref s3RemediationFunction
+
+  #==================================================
+  # Scheduled CloudWatch rule to trigger the
+  # remediation function.
+  #==================================================
+  TriggeredRuleForS3AutoResponse:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Responds to S3 CreateBucket events
+      EventPattern:
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CreateBucket
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt s3RemediationFunction.Arn
+          Id: TargetFunctionV1
+
+  #==================================================
+  # Function used to modify s3 buckets as they are
+  # created and apply the public block to them unless
+  # they have been excluded.
+  #==================================================
+  s3RemediationFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: s3-access-remediation/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt S3ChangeAutoResponseRole.Arn
+      Environment:
+        Variables:
+          slack_webhook_url:
+            Ref: SlackWebHookUrl
+          sns_topic:
+            Ref: SNSTopic
+          tag_to_test_for:
+            Ref: TestTag
