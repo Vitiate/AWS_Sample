@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  credential-enforcement
+
+  Sample SAM Template for credential-enforcement
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3000
+
+Resources:
+  credentialEnforcementFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - iam:ListUsers
+              - iam:ListAccessKeys
+              - iam:GetAccessKeyLastUsed
+              - iam:DeleteAccessKey
+              - iam:DeleteLoginProfile
+              - iam:DeleteUser
+            Resource:
+              - *
+  credentialEnforcementFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: lambda_credential_enforcement/
+      Handler: app.lambda_handler
+      Role: !GetAtt credentialEnforcementFunctionRole
+      Runtime: python3.8
+  EventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+      -   PolicyName: "AllowLambdaInvoke"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource: !GetAtt credentialEnforcementFunction.Arn
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      RoleArn: !GetAtt EventRole.Arn
+      ScheduleExpression: "rate(24 hours)"
+      Targets:
+        - Id: 'LambdaTarget'
+          Arn: !GetAtt credentialEnforcementFunction.Arn
