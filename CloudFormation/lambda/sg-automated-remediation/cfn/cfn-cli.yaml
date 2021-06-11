@@ -1,0 +1,57 @@
+Version: 3
+
+Blueprints:
+  remote-access-protection:
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    StackName: cw-rule-remove-ssh-rule
+    Template: ./templates/cw-rule-remove-ssh-rule.yaml
+    Package: True
+    Parameters:
+      snsTopic: <SNS_TOPIC>
+      SlackWebHookUrl: <SLACK_WEBHOOK>
+    Tags:
+      au:application:owner: Information Technology Services
+      au:application:environment: prod
+
+  scheduled-remote-access-protection:
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    StackName: lambda-scheduled-remove-sg
+    Template: ./templates/lambda-remove-sg.yaml
+    Package: True
+    Parameters:
+      SlackWebHookUrl: <SLACK_WEBHOOK>
+    Tags:
+      au:application:owner: Information Technology Services
+      au:application:environment: prod
+
+Stages:
+  install:
+    remote-access-protection-west:
+      Region: us-west-2
+      Order: 4
+      Extends: remote-access-protection
+      Parameters:
+        snsTopic: <SNS_TOPIC>
+
+    scheduled-remote-access-protection-west:
+      Region: us-west-2
+      Order: 4
+      Extends: scheduled-remote-access-protection
+      Parameters:
+        snsTopic: <SNS_TOPIC>
+
+    remote-access-protection-east:
+      Region: us-east-1
+      Order: 4
+      Extends: remote-access-protection
+      Parameters:
+        snsTopic: <SNS_TOPIC>
+
+    scheduled-remote-access-protection-east:
+      Region: us-east-1
+      Order: 4
+      Extends: scheduled-remote-access-protection
+      Parameters:
+        snsTopic: <SNS_TOPIC>

@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: This template prevents the creation of security group rules containing ssh access to 0.0.0.0/0
+
+Parameters:
+  snsTopic:
+    Description: |
+      The SNS Topic to send notifications to
+    Type: String
+  SlackWebHookUrl:
+    Description: |
+      The Slack Webhook to send notifications to
+    Type: String
+
+Resources:
+  SecurityGroupChangeAutoResponseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaFullAccess
+      Policies:
+        - PolicyName: SecurityGroupModification
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowSecurityGroupActions
+                Effect: Allow
+                Action:
+                  - ec2:*SecurityGroup*
+                Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+        - PolicyName: WriteToSNS
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowSNSActions
+                Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref snsTopic
+
+  SecurityGroupChangeAutoResponse:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Responds to security group changes
+      Handler: index.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt SecurityGroupChangeAutoResponseRole.Arn
+      Runtime: python3.7
+      Timeout: 300
+      Environment:
+        Variables:
+          sns_topic: !Ref snsTopic
+          slack_webhook_url: !Ref SlackWebHookUrl
+      Code:
+        ZipFile: |
+          #
+          import os, json, boto3, logging
+          from botocore.vendored import requests
+          logger = logging.getLogger()
+          logger.setLevel(logging.WARNING)
+          def lambda_handler(event, context):
+            ACCOUNT_ID = context.invoked_function_arn.split(":")[4]
+            REGION = context.invoked_function_arn.split(":")[3]
+            if 'detail' not in event or ('detail' in event and 'eventName' not in event['detail']):
+              return {"Result": "Failure", "Message": "Lambda not triggered by an event"}
+            if (event['detail']['eventName'] == 'AuthorizeSecurityGroupIngress'):
+              GroupId = event['detail']['requestParameters']['groupId']
+              response = boto3.client('ec2').describe_security_groups(GroupIds=[GroupId])
+              for i in response['SecurityGroups']:
+                  if not test_tag(i):
+                    message = "Ingress rule removed from {} security group: {} that was added by {} ".format( ACCOUNT_ID, GroupId, event['detail']['userIdentity']['arn'] )
+                    found = 0
+                    for o in i['IpPermissions']:
+                      if test_group(o):
+                        found = found + 1
+                        result = revoke_ingress(i['GroupId'], o)
+                        message = message + "{}".format(
+                          json.dumps(result['ip_permissions'])  
+                        )
+                      message = message + '\nhttps://{}.console.aws.amazon.com/ec2/v2/home?region={}#SecurityGroup:group-id={}'.format( REGION, REGION, GroupId)
+                    logger.warning("found: " + str(found))
+                    if (found > 0):  
+                      detail = {}
+                      detail['Subject'] = "Security Groups Auto Remediation"
+                      detail['Message'] = message
+                      logger.warning(message)
+                      #response=boto3.client('sns').publish(TopicArn=os.environ['sns_topic'], Message=json.dumps(detail))
+                      slack_notification(pretext=detail['Subject'],message=detail['Message'],webhook_url=os.environ['slack_webhook_url'])
+            return {
+              'statusCode': 200,
+              'body': json.dumps("exit")
+            }
+          def slack_notification(pretext, message, webhook_url):
+            slack_data = {'pretext': pretext, 'text': message}
+            
+            response = requests.post(
+                webhook_url, data=json.dumps(slack_data),
+                headers={'Content-Type': 'application/json'}
+            )
+            if response.status_code != 200:
+                raise ValueError(
+                    'Request to slack returned an error %s, the response is:\n%s'
+                    % (response.status_code, response.text)
+                )
+          def test_tag(tags):
+              try:
+                  for i in tags['Tags']:
+                      if i['Key'] == 'fms:exclusion' and i['Value'] == 'remote-access':
+                          return True
+              except:
+                  pass
+              return False
+          def test_group(ip_item):
+              i = ip_item
+              found = False
+              if i['IpProtocol'] == "-1" or "udp" or "tcp":
+                try:
+                  if i['ToPort'] - i['FromPort'] > 5 or i['FromPort'] == 3389 or i['FromPort'] == 22:
+                    found = True
+                except:
+                  pass
+              if found:
+                  try:
+                      if ( i['IpRanges'][0]['CidrIp'] == '0.0.0.0/0'):
+                          return True
+                  except:
+                      pass
+                  try:
+                      if ( i['Ipv6Ranges'][0]['CidrIpv6'] == '::/0'):
+                          return True
+                  except:
+                      pass
+              return False
+          def revoke_ingress(groupId, rule):
+              from botocore.config import Config
+              response = boto3.client('ec2').revoke_security_group_ingress(
+                  GroupId = groupId,
+                  IpPermissions = [rule]
+                  )
+              result = {}
+              result['group_id'] = groupId
+              result['ip_permissions'] = rule
+              return result
+
+  #==================================================
+  # Permission that allows the CloudWatch service to
+  # execute the Lambda function.
+  #==================================================
+  SecurityGroupChangeAutoResponseLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      FunctionName: !Ref SecurityGroupChangeAutoResponse
+
+  #==================================================
+  # Scheduled CloudWatch rule to trigger the
+  # revocation function. The events can be mofied as
+  # desired.
+  #==================================================
+  TriggeredRuleForSecurityGroupChangeAutoResponse:
+    Type: AWS::Events::Rule
+    Properties:
+      #Name: SecurityGroupChangeAutoResponse
+      Description: Responds to security group change events
+      EventPattern:
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+          eventName:
+            - AuthorizeSecurityGroupIngress
+            - AuthorizeSecurityGroupEgress
+            - RevokeSecurityGroupEgress
+            - RevokeSecurityGroupIngress
+            - CreateSecurityGroup
+            - DeleteSecurityGroup
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SecurityGroupChangeAutoResponse.Arn
+          Id: TargetFunctionV1
