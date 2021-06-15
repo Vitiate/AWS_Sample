@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: VPC Template
+Description: VPC Template 2.0.
 
 Parameters:
   VpcName:
@@ -19,19 +19,18 @@ Resources:
       EnableDnsSupport: True
       EnableDnsHostnames: True
       InstanceTenancy: default
-      CidrBlock: { Ref: VpcCidr }
+      CidrBlock: !Ref VpcCidr
       Tags:
         - Key: Name
-          Value:
-            "Fn::Sub": "${VpcName}"
+          Value: !Ref VpcName
 
   VpcIdParameter:
-    Type: "AWS::SSM::Parameter"
+    Type: AWS::SSM::Parameter
     Properties:
-      Name: "/cloudformation/vpc/id"
-      Type: "String"
-      Value: { Ref: Vpc }
+      Name: /cloudformation/vpc/id
+      Type: String
+      Value: !Ref Vpc
 
 Outputs:
-  VpcId:
-    Value: { Ref: Vpc }
+    VpcId:
+      Value: !Ref Vpc

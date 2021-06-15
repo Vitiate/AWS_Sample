@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: VPC FlowLogs.
+
+Parameters:
+  VpcId:
+    Type: String
+    Description: The ID of the VPC to add the subnet to
+Resources:
+
+  IAMFlowLog:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "vpc-flow-logs.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Policies: 
+        - PolicyName: CloudWatchPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: !Sub arn:aws:logs::${AWS::AccountId}:log-group:flow-logs-group-${AWS::Region}
+      Description: Allows FlowLog Creation in CloudWatch
+      Path: /
+      RoleName: !Sub IAMFlowLog-${VpcId}
+
+  FlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt IAMFlowLog.Arn
+      LogGroupName: !Sub flow-logs-group-${AWS::Region}
+      ResourceId: !Ref VpcId
+      ResourceType: VPC
+      TrafficType: ALL

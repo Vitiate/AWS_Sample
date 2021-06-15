@@ -6,29 +6,31 @@ Parameters:
   VpcId:
     Type: String
     Description: The ID of the VPC to add the subnet to
+
   AvailabilityZone:
-    Type: String
+    Type: Number
     Description: Zone Number
+
   PublicZone:
     Type: String
     Description: Is this a public subnet
+
   CidrBlock:
     Type: String
     Description: The CidrBlock of the Subnet
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
 
 Conditions:
-  IsPublicZone:
-    "Fn::Equals":
-      - { Ref: PublicZone }
-      - "True"
+  IsPublicZone: !Equals
+      - !Ref PublicZone
+      - "true"
 
 Resources:
   Subnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VpcId
-      AvailabilityZone: { "Fn::Select": [ !Ref AvailabilityZone, { "Fn::GetAZs": "" } ] }
+      AvailabilityZone: !Select [ !Ref AvailabilityZone, Fn::GetAZs: !Ref "AWS::Region" ]
       MapPublicIpOnLaunch: !Ref PublicZone
       CidrBlock: !Ref CidrBlock
       Tags:
@@ -38,17 +40,18 @@ Resources:
               - IsPublicZone
               - !Sub 
                 - "public-${AZ}"
-                - { AZ: !Select [ !Ref AvailabilityZone, !GetAZs "" ]}
-              - Fn::Sub: 
+                - { AZ: !Select [ !Ref AvailabilityZone, Fn::GetAZs: !Ref "AWS::Region" ]}
+              - !Sub
                 - "private-${AZ}"
-                - { AZ: !Select [ !Ref AvailabilityZone, !GetAZs "" ]}
+                - { AZ: !Select [ !Ref AvailabilityZone, Fn::GetAZs: !Ref "AWS::Region" ]}
+
   SubnetParameter:
-    Type: "AWS::SSM::Parameter"
+    Type: AWS::SSM::Parameter
     Properties:
       Name: !If [IsPublicZone, 
           !Sub "/cloudformation/vpc/az${AvailabilityZone}-public-subnet/id", 
           !Sub "/cloudformation/vpc/az${AvailabilityZone}-private-subnet/id"]
-      Type: "String"
+      Type: String
       Value: !Ref Subnet 
 
 Outputs:

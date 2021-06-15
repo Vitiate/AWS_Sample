@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Defines VPC endpoints
+
+Parameters:
+  AddS3Endpoint:
+    Type: String
+ #   AllowedValues:
+##      - "yes"
+#      - "no"
+    Default: "no"
+    Description: Value that indicates whether to provision an S3 endpoint
+
+  AddDynamoDbEndpoint:
+    Type: String
+ #   AllowedValues:
+##      - "yes"
+#      - "no"
+    Default: "no"
+    Description: Value that indicates whether to provision a Dynamo DB endpoint
+
+  AddCloudWatchEndpoint:
+    Type: String
+ #   AllowedValues:
+##      - "yes"
+#      - "no"
+    Default: "no"
+    Description: Value that indicates whether to provision a CloudWatch logs endpoint
+
+  AddSsmEndpoint:
+    Type: String
+ #   AllowedValues:
+##      - "yes"
+#      - "no"
+    Default: "no"
+    Description: Value that indicates whether to provision a SSM and SSM messages endpoint
+
+  AddSecretsManagerEndpoint:
+    Type: String
+ #   AllowedValues:
+##      - "yes"
+#      - "no"
+    Default: "no"
+    Description: Value that indicates whether to provision a Secrets Manager endpoint
+
+  RouteTableIds:
+    Type: CommaDelimitedList
+    Description: List of route tables with which to associate a gateway endpoint
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet IDs with which to associate an interface endpoint
+
+  CloudWatchEndpointSecurityGroupId:
+    Type: String
+    Description: Security group ID to apply to the CloudWatch interface endpoint
+    Default: ""
+
+  SsmEndpointSecurityGroupId:
+    Type: String
+    Description: Security group ID to apply to the SSM interface endpoints
+    Default: ""
+
+  SecretsManagerEndpointSecurityGroupId:
+    Type: String
+    Description: Security group ID to apply to the Secrets Manager interface endpoint
+    Default: ""
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The ID of the VPC to add the subnet to
+
+Conditions:
+  BuildS3Endpoint: !Equals [ !Ref AddS3Endpoint, "yes" ]
+  BuildDynamoDbEndpoint: !Equals [ !Ref AddDynamoDbEndpoint, "yes" ]
+  BuildCloudWatchEndpoint: !Equals [ !Ref AddCloudWatchEndpoint, "yes" ]
+  BuildSsmEndpoint: !Equals [ !Ref AddSsmEndpoint, "yes" ]
+  BuildSecretsManagerEndpoint: !Equals [ !Ref AddSecretsManagerEndpoint, "yes" ]
+  UseCloudWatchSecurityGroups: !Not [!Equals [!Ref CloudWatchEndpointSecurityGroupId, ""]]
+  UseSsmSecurityGroups: !Not [ !Equals [ !Ref SsmEndpointSecurityGroupId, "" ] ]
+  UseSecretsManagerSecurityGroups: !Not [ !Equals [ !Ref SecretsManagerEndpointSecurityGroupId, "" ] ]
+
+Resources:
+
+#####################
+# Gateway Endpoints #
+#####################
+
+  S3VpcEndpoint:
+    Condition: BuildS3Endpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcId: !Ref VpcId
+      RouteTableIds: !Ref RouteTableIds
+      
+  DynamoDbVpcEndpoint:
+    Condition: BuildDynamoDbEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.dynamodb"
+      VpcId: !Ref VpcId
+      RouteTableIds: !Ref RouteTableIds
+
+#######################
+# Interface Endpoints #
+#######################
+
+  CloudWatchVpcEndpoint:
+    Condition: BuildCloudWatchEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      SubnetIds: !Ref SubnetIds
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SecurityGroupIds:
+        - !If [ UseCloudWatchSecurityGroups, !Ref CloudWatchEndpointSecurityGroupId, !Ref AWS::NoValue ]
+
+  SsmVpcEndpoint:
+    Condition: BuildSsmEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      SubnetIds: !Ref SubnetIds
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SecurityGroupIds:
+        - !If [ UseSsmSecurityGroups, !Ref SsmEndpointSecurityGroupId, !Ref AWS::NoValue ]
+
+  SsmMesssagesVpcEndpoint:
+    Condition: BuildSsmEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      SubnetIds: !Ref SubnetIds
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SecurityGroupIds:
+        - !If [ UseSsmSecurityGroups, !Ref SsmEndpointSecurityGroupId, !Ref AWS::NoValue ]
+
+  SecretsManagerVpcEndpoint:
+    Condition: BuildSecretsManagerEndpoint
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.secretsmanager"
+      SubnetIds: !Ref SubnetIds
+      VpcId: !Ref VpcId
+      VpcEndpointType: Interface
+      SecurityGroupIds:
+        - !If [ UseSecretsManagerSecurityGroups, !Ref SecretsManagerEndpointSecurityGroupId, !Ref AWS::NoValue ]

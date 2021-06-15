@@ -8,6 +8,10 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
   routetable:
     Order: 2
     Region: us-west-2
@@ -15,6 +19,10 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
   subnet:
     Order: 3
     Region: us-west-2
@@ -22,6 +30,10 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
   route-table-association:
     Order: 4
     Region: us-west-2
@@ -29,6 +41,10 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
   transit-gateway-attachment:
     Order: 5
     Region: us-west-2
@@ -36,6 +52,10 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
   route:
     Order: 6
     Region: us-west-2
@@ -43,76 +63,390 @@ Blueprints:
     StackPolicy: ALLOW_ALL
     Capabilities: [CAPABILITY_IAM]
     Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
+  vpc-endpoints:
+    Order: 7
+    Region: us-west-2
+    Template: ./templates/endpoints.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_IAM]
+    Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
+  vpc-flowlogs:
+    Order: 8
+    Region: us-west-2
+    Template: ./templates/flowlogs.yaml
+    StackPolicy: ALLOW_ALL
+    Capabilities: [CAPABILITY_NAMED_IAM]
+    Package: true
+    Tags:
+      git:commit: a6b1ea6
+      git:branch: master
+
 Stages:
-  demo:
+  logging:
     vpc:
       Extends: vpc
       StackName: base-vpc
       Parameters:
-        VpcName: demo-vpc
-        VpcCidr: 10.0.0.0/24
+        VpcName: base-vpc
+        VpcCidr: 10.0.8.0/24
+
     routetable-private:
       Extends: routetable
       StackName: base-private-route-table
       Parameters:
-        RouteTableName: vpc-private-route-table 
-        VpcId: ${demo.vpc.VpcId}
+        RouteTableName: vpc-private-route-table
+        VpcId: ${logging.vpc.VpcId}
+
     private-subnet0:
       Extends: subnet
       StackName: base-private-subnet0
       Parameters:
-        VpcId: ${demo.vpc.VpcId}
-        AvailabilityZone: "0"
-        PublicZone: False
-        CidrBlock: 10.0.0.0/27
+        VpcId: ${logging.vpc.VpcId}
+        AvailabilityZone: 0
+        PublicZone: false
+        CidrBlock: 10.0.8.0/27
+
     private-subnet1:
       Extends: subnet
       StackName: base-private-subnet1
       Parameters:
-        VpcId: ${demo.vpc.VpcId}
-        AvailabilityZone: "1"
-        PublicZone: False
-        CidrBlock: 10.0.0.32/27
+        VpcId: ${logging.vpc.VpcId}
+        AvailabilityZone: 1
+        PublicZone: false
+        CidrBlock: 10.0.8.32/27
+
     private-subnet2:
       Extends: subnet
       StackName: base-private-subnet2
       Parameters:
-        VpcId: ${demo.vpc.VpcId}
-        AvailabilityZone: "2"
-        PublicZone: False
-        CidrBlock: 10.0.0.64/27
+        VpcId: ${logging.vpc.VpcId}
+        AvailabilityZone: 2
+        PublicZone: false
+        CidrBlock: 10.0.8.64/27
+
     route-table-association0:
       Extends: route-table-association
       StackName: base-route-association-private-subnet0
       Parameters:
-        RouteTableId: ${demo.routetable-private.RouteTableId}
-        SubnetId: ${demo.private-subnet0.SubnetId}
+        RouteTableId: ${logging.routetable-private.RouteTableId}
+        SubnetId: ${logging.private-subnet0.SubnetId}
+
     route-table-association1:
       Extends: route-table-association
       StackName: base-route-association-private-subnet1
       Parameters:
-        RouteTableId: ${demo.routetable-private.RouteTableId}
-        SubnetId: ${demo.private-subnet1.SubnetId}
+        RouteTableId: ${logging.routetable-private.RouteTableId}
+        SubnetId: ${logging.private-subnet1.SubnetId}
+
     route-table-association2:
       Extends: route-table-association
       StackName: base-route-association-private-subnet2
       Parameters:
-        RouteTableId: ${demo.routetable-private.RouteTableId}
-        SubnetId: ${demo.private-subnet2.SubnetId}
+        RouteTableId: ${logging.routetable-private.RouteTableId}
+        SubnetId: ${logging.private-subnet2.SubnetId}
+
     transit-gateway-attachment:
       Extends: transit-gateway-attachment
       StackName: base-transit-gateway-attachment
       Parameters:
-        VpcId: ${demo.vpc.VpcId}
-        TransitGatewayId: <TRANSIT_GATEWAY>
-        Subnet0: ${demo.private-subnet0.SubnetId}
-        Subnet1: ${demo.private-subnet1.SubnetId}
-        Subnet2: ${demo.private-subnet2.SubnetId}
+        VpcId: ${logging.vpc.VpcId}
+        TransitGatewayId: tgw-idGoesHere
+        SubnetIds: ${logging.private-subnet0.SubnetId},${logging.private-subnet1.SubnetId},${logging.private-subnet2.SubnetId}
+
     route-tgw:
       Extends: route
       StackName: base-transit-gateway-route
       Parameters:
-        RouteTableId: ${demo.routetable-private.RouteTableId}
+        RouteTableId: ${logging.routetable-private.RouteTableId}
         CidrBlock: 0.0.0.0/0
-        TargetId: <TRANSIT_GATEWAY>
+        TargetId: tgw-idGoesHere
         TargetType: TransitGateway
+
+    vpc-endpoints:
+      Extends: vpc-endpoints
+      StackName: base-vpc-endpoints
+      Parameters:
+        AddS3Endpoint: no
+        AddDynamoDbEndpoint: yes
+        AddCloudWatchEndpoint: yes
+        AddSsmEndpoint: yes
+        AddSecretsManagerEndpoint: yes
+        VpcId: ${logging.vpc.VpcId}
+        RouteTableIds: ${logging.routetable-private.RouteTableId}
+        SubnetIds: ${logging.private-subnet0.SubnetId},${logging.private-subnet1.SubnetId},${logging.private-subnet2.SubnetId}
+        CloudWatchEndpointSecurityGroupId: ""
+        SsmEndpointSecurityGroupId: ""
+        SecretsManagerEndpointSecurityGroupId: ""
+
+    vpc-flowlogs:
+      Extends: vpc-flowlogs
+      StackName: vpc-flowlogs
+      Parameters:
+        VpcId: ${logging.vpc.VpcId}
+
+  devops:
+    vpc:
+      Extends: vpc
+      StackName: base-vpc
+      Parameters:
+        VpcName: devops-vpc
+        VpcCidr: 10.0.9.0/24
+
+    routetable-private:
+      Extends: routetable
+      StackName: base-private-route-table
+      Parameters:
+        RouteTableName: vpc-private-route-table
+        VpcId: ${devops.vpc.VpcId}
+
+    private-subnet0:
+      Extends: subnet
+      StackName: base-private-subnet0
+      Parameters:
+        VpcId: ${devops.vpc.VpcId}
+        AvailabilityZone: 0
+        PublicZone: false
+        CidrBlock: 10.0.9.0/26
+
+    private-subnet1:
+      Extends: subnet
+      StackName: base-private-subnet1
+      Parameters:
+        VpcId: ${devops.vpc.VpcId}
+        AvailabilityZone: 1
+        PublicZone: false
+        CidrBlock: 10.0.9.64/26
+
+    private-subnet2:
+      Extends: subnet
+      StackName: base-private-subnet2
+      Parameters:
+        VpcId: ${devops.vpc.VpcId}
+        AvailabilityZone: 2
+        PublicZone: false
+        CidrBlock: 10.0.9.128/26
+
+    route-table-association0:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet0
+      Parameters:
+        RouteTableId: ${devops.routetable-private.RouteTableId}
+        SubnetId: ${devops.private-subnet0.SubnetId}
+
+    route-table-association1:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet1
+      Parameters:
+        RouteTableId: ${devops.routetable-private.RouteTableId}
+        SubnetId: ${devops.private-subnet1.SubnetId}
+
+    route-table-association2:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet2
+      Parameters:
+        RouteTableId: ${devops.routetable-private.RouteTableId}
+        SubnetId: ${devops.private-subnet2.SubnetId}
+
+    transit-gateway-attachment:
+      Extends: transit-gateway-attachment
+      StackName: base-transit-gateway-attachment
+      Parameters:
+        VpcId: ${devops.vpc.VpcId}
+        TransitGatewayId: tgw-idGoesHere
+        SubnetIds: ${devops.private-subnet0.SubnetId},${devops.private-subnet1.SubnetId},${devops.private-subnet2.SubnetId}
+
+    route-tgw:
+      Extends: route
+      StackName: base-transit-gateway-route
+      Parameters:
+        RouteTableId: ${devops.routetable-private.RouteTableId}
+        CidrBlock: 0.0.0.0/0
+        TargetId: tgw-idGoesHere
+        TargetType: TransitGateway
+
+    vpc-endpoints:
+      Extends: vpc-endpoints
+      StackName: base-vpc-endpoints
+      Parameters:
+        AddS3Endpoint: yes
+        AddDynamoDbEndpoint: yes
+        AddCloudWatchEndpoint: yes
+        AddSsmEndpoint: yes
+        AddSecretsManagerEndpoint: yes
+        VpcId: ${devops.vpc.VpcId}
+        RouteTableIds: ${devops.routetable-private.RouteTableId}
+        SubnetIds: ${devops.private-subnet0.SubnetId},${devops.private-subnet1.SubnetId},${devops.private-subnet2.SubnetId}
+        CloudWatchEndpointSecurityGroupId: ""
+        SsmEndpointSecurityGroupId: ""
+        SecretsManagerEndpointSecurityGroupId: ""
+
+    vpc-flowlogs:
+      Extends: vpc-flowlogs
+      StackName: vpc-flowlogs
+      Parameters:
+        VpcId: ${devops.vpc.VpcId}
+
+  clientvpn:
+    vpc:
+      Extends: vpc
+      StackName: clientvpn-vpc
+      Parameters:
+        VpcName: clientvpn-vpc
+        VpcCidr: 10.9.0.0/16
+
+    routetable-private:
+      Extends: routetable
+      StackName: base-private-route-table
+      Parameters:
+        RouteTableName: vpc-private-route-table
+        VpcId: ${clientvpn.vpc.VpcId}
+
+    routetable-public:
+      Extends: routetable
+      StackName: base-public-route-table
+      Parameters:
+        RouteTableName: vpc-public-route-table
+        VpcId: ${clientvpn.vpc.VpcId}
+
+    private-subnet0:
+      Extends: subnet
+      StackName: base-private-subnet0
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 0
+        PublicZone: false
+        CidrBlock: 10.9.0.0/19
+
+    private-subnet1:
+      Extends: subnet
+      StackName: base-private-subnet1
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 1
+        PublicZone: false
+        CidrBlock: 10.9.32.1/19
+
+    private-subnet2:
+      Extends: subnet
+      StackName: base-private-subnet2
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 2
+        PublicZone: false
+        CidrBlock: 10.9.64.1/19
+
+    public-subnet0:
+      Extends: subnet
+      StackName: base-public-subnet0
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 0
+        PublicZone: true
+        CidrBlock: 10.9.96.0/19
+
+    public-subnet1:
+      Extends: subnet
+      StackName: base-public-subnet1
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 1
+        PublicZone: true
+        CidrBlock: 10.9.128.1/19
+
+    public-subnet2:
+      Extends: subnet
+      StackName: base-public-subnet2
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        AvailabilityZone: 2
+        PublicZone: true
+        CidrBlock: 10.9.160.1/19
+
+    route-table-association0:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet0
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-private.RouteTableId}
+        SubnetId: ${clientvpn.private-subnet0.SubnetId}
+
+    route-table-association1:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet1
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-private.RouteTableId}
+        SubnetId: ${clientvpn.private-subnet1.SubnetId}
+
+    route-table-association2:
+      Extends: route-table-association
+      StackName: base-route-association-private-subnet2
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-private.RouteTableId}
+        SubnetId: ${clientvpn.private-subnet2.SubnetId}
+
+    public-route-table-association0:
+      Extends: route-table-association
+      StackName: base-route-association-public-subnet0
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-public.RouteTableId}
+        SubnetId: ${clientvpn.public-subnet0.SubnetId}
+
+    public-route-table-association1:
+      Extends: route-table-association
+      StackName: base-route-association-public-subnet1
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-public.RouteTableId}
+        SubnetId: ${clientvpn.public-subnet1.SubnetId}
+
+    public-route-table-association2:
+      Extends: route-table-association
+      StackName: base-route-association-public-subnet2
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-public.RouteTableId}
+        SubnetId: ${clientvpn.public-subnet2.SubnetId}
+
+    transit-gateway-attachment:
+      Extends: transit-gateway-attachment
+      StackName: base-transit-gateway-attachment
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}
+        TransitGatewayId: tgw-idGoesHere
+        SubnetIds: ${clientvpn.private-subnet0.SubnetId},${clientvpn.private-subnet1.SubnetId},${clientvpn.private-subnet2.SubnetId}
+
+    route-tgw:
+      Extends: route
+      StackName: base-transit-gateway-route
+      Parameters:
+        RouteTableId: ${clientvpn.routetable-private.RouteTableId}
+        CidrBlock: 0.0.0.0/0
+        TargetId: tgw-idGoesHere
+        TargetType: TransitGateway
+
+    vpc-endpoints:
+      Extends: vpc-endpoints
+      StackName: base-vpc-endpoints
+      Parameters:
+        AddS3Endpoint: yes
+        AddDynamoDbEndpoint: yes
+        AddCloudWatchEndpoint: yes
+        AddSsmEndpoint: yes
+        AddSecretsManagerEndpoint: yes
+        VpcId: ${clientvpn.vpc.VpcId}
+        RouteTableIds: ${clientvpn.routetable-private.RouteTableId}
+        SubnetIds: ${clientvpn.private-subnet0.SubnetId},${clientvpn.private-subnet1.SubnetId},${clientvpn.private-subnet2.SubnetId}
+        CloudWatchEndpointSecurityGroupId: ""
+        SsmEndpointSecurityGroupId: ""
+        SecretsManagerEndpointSecurityGroupId: ""
+
+    vpc-flowlogs:
+      Extends: vpc-flowlogs
+      StackName: vpc-flowlogs
+      Parameters:
+        VpcId: ${clientvpn.vpc.VpcId}

@@ -6,44 +6,22 @@ Parameters:
   VpcId:
     Type: String
     Description: The ID of the VPC to add the subnet to
+
   TransitGatewayId:
     Type: String
     Description: The id of the shared tgw
-  Subnet0:
-    Type: String
-    Description: The Id of the subnet
-  Subnet1:
-    Type: String
-    Description: The Id of the subnet
-  Subnet2:
-    Type: String
-    Description: The Id of the subnet
 
-Conditions:
-  IsThreeAz:
-    "Fn::And":
-      - "Fn::Not":
-          - "Fn::Equals":
-              - { Ref: Subnet0 }
-              - ""
-      - "Fn::Not":
-          - "Fn::Equals":
-              - { Ref: Subnet1 }
-              - ""
+  SubnetIds:
+    Type: CommaDelimitedList
+    Description: List of subnet IDs to use with the transit gateway attachment
 
 Resources:
   TgwAttachment:
     Type: AWS::EC2::TransitGatewayAttachment
     Properties:
-      SubnetIds:
-        - { Ref: Subnet0 }
-        - { Ref: Subnet1 }
-        - "Fn::If":
-          - IsThreeAz
-          - { Ref: Subnet2 }
-          - { Ref: "AWS::NoValue" }
+      SubnetIds: !Ref SubnetIds
       Tags:
         - Key: Name
           Value: tgw-attachment
-      TransitGatewayId: { Ref: TransitGatewayId }
-      VpcId: { Ref: VpcId }
+      TransitGatewayId: !Ref TransitGatewayId
+      VpcId: !Ref VpcId
