@@ -3,11 +3,14 @@ import boto3
 import logging
 import os
 import requests
+from builtins import any as b_any
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 logger.info("Starting Execution")
+
+DoNotAlertOn = ["Tags"]
 
 slack_webhook_url = os.environ['slack_webhook_url']
 if slack_webhook_url != "no_value":
@@ -28,7 +31,6 @@ def slack_notification(pretext, message, webhook_url):
     response = requests.post(
         webhook_url, data=json.dumps(slack_data), headers={'Content-Type': 'application/json'}
     )
-    print(response)
     if response.status_code != 200:
         raise ValueError(
             'Request to slack returned an error %s, the response is:\n%s'
@@ -100,10 +102,43 @@ def lambda_handler(event, context):
             except Exception as e:
                 logger.error(f"detect_stack_drift: Error {e}")
                 status_code = 500
+        Alert = False
         if stack['DriftInformation']['StackDriftStatus'] == 'DRIFTED':
+            Alert = True
             drift_count += 1
-            notification_handler(
-                f"{stack['StackName']} in {ACCOUNT_NAME}\{ACCOUNT_ID} Region {REGION} has been found in a DRIFTED state")
+
+            try:  # Get the resources that have drifted
+
+                response = cfn_client.describe_stack_resource_drifts(
+                    StackName=stack['StackName'])
+                DriftResults = response['StackResourceDrifts']
+
+                while "NextToken" in response:
+                    response = cfn_client.list_stacks(
+                        StackStatusFilter=[
+                            'CREATE_COMPLETE', 'UPDATE_COMPLETE'
+                        ], NextToken=response["NextToken"]
+                    )
+                    DriftResults.extend(response['StackResourceDrifts'])
+            except Exception as e:
+                logger.error(f"detect_stack_drift: Error {e}")
+                status_code = 500
+
+            resMsg = " "
+            for i in DriftResults:
+                print(i['StackId'])
+                if 'DELETED' not in i['StackResourceDriftStatus']:
+                    PropertyDifferences = i['PropertyDifferences']
+                    for x in PropertyDifferences:
+                        PropertyPath = x['PropertyPath']
+                        # Check for anything in our list of paths to skip
+                        if b_any(word in PropertyPath.split("/") for word in DoNotAlertOn):
+                            logger.info("Skipping Resource")
+                        else:
+                            resMsg = f"{resMsg}\t\n Resource: {i['ResourceType']}/{i['LogicalResourceId']}{x['PropertyPath']} - {i['StackResourceDriftStatus']}"
+        if Alert:
+            message = f"{stack['StackName']} in {ACCOUNT_NAME}\{ACCOUNT_ID} Region {REGION} has been found in a DRIFTED state {resMsg}"
+            notification_handler(message)
             logger.debug(f"{stack['StackName']} is found in a DRIFTED state")
 
     sync_count = stack_count - drift_count

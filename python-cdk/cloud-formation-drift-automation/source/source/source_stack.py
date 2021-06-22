@@ -36,7 +36,8 @@ class SourceStack(cdk.Stack):
                         effect=aws_iam.Effect.ALLOW,
                         actions=[
                             'cloudformation:ListStacks',
-                            'cloudformation:DetectStackDrift'
+                            'cloudformation:DetectStackDrift',
+                            'cloudformation:DescribeStackResourceDrifts'
                         ],
                         resources=[
                             'arn:aws:cloudformation:*'
@@ -78,6 +79,8 @@ class SourceStack(cdk.Stack):
 
                 handler = lambda_.Function(self, "Drift_Detection",
                                            runtime=lambda_.Runtime.PYTHON_3_8,
+                                           memory_size=160,
+                                           timeout=core.Duration.seconds(30),
                                            code=lambda_.Code.from_asset(
                                                "resources"),
                                            handler="lambda_cfn_drift.lambda_handler",
