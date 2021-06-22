@@ -52,7 +52,10 @@ def lambda_handler(event, context):
     try:
         ACCOUNT_ID = context.invoked_function_arn.split(":")[4]
         REGION = context.invoked_function_arn.split(":")[3]
-    except:
+        ACCOUNT_NAME = boto3.client('iam').list_account_aliases()[
+            'AccountAliases'][0]
+    except Exception as e:
+        logger.error(f"May be running locally: Error {e}")
         # If the above fails then the function is being executed locally
         ACCOUNT_ID = 111111111
         REGION = "local-execution"
@@ -65,17 +68,29 @@ def lambda_handler(event, context):
     try:  # Try and get a list of stabalized cfn templates to test for drift
         logger.debug(
             "Obtain list of cloudformation stacks in the CREATE_COMPLETE or UPDATE_COMPLETE state")
+        NextToken = " "
+        StackList = []
+
         response = cfn_client.list_stacks(
             StackStatusFilter=[
                 'CREATE_COMPLETE', 'UPDATE_COMPLETE'
             ]
         )
+        results = response['StackSummaries']
+        while "NextToken" in response:
+            response = cfn_client.list_stacks(
+                StackStatusFilter=[
+                    'CREATE_COMPLETE', 'UPDATE_COMPLETE'
+                ], NextToken=response["NextToken"]
+            )
+            results.extend(response['StackSummaries'])
+
     except Exception as e:
         logger.error(f"list_stacks: Error {e}")
         status_code = 500
 
     logger.debug("Checking stacks for Drift Detection NOT_CHECKED")
-    for stack in response['StackSummaries']:
+    for stack in results:
         stack_count += 1
         if stack['DriftInformation']['StackDriftStatus'] == 'NOT_CHECKED':
             try:  # Enable drift detection
@@ -88,7 +103,7 @@ def lambda_handler(event, context):
         if stack['DriftInformation']['StackDriftStatus'] == 'DRIFTED':
             drift_count += 1
             notification_handler(
-                f"{stack['StackName']} in {ACCOUNT_ID} Region {REGION} has been found in a DRIFTED state")
+                f"{stack['StackName']} in {ACCOUNT_NAME}\{ACCOUNT_ID} Region {REGION} has been found in a DRIFTED state")
             logger.debug(f"{stack['StackName']} is found in a DRIFTED state")
 
     sync_count = stack_count - drift_count
