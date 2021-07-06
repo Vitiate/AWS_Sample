@@ -1,0 +1,150 @@
+
+# List all cloudtrail entries where resource is modified
+SELECT eventtime, eventsource,eventname,useridentity.arn FROM "configsnapshotdb"."cloudtrail_logs" where
+requestparameters LIKE '%sg-groupid1234%'
+ORDER BY eventtime DESC
+LIMIT 500
+
+# Get list of resources ordered by the number of changes using config
+SELECT configurationItem.resourceType,
+         configurationItem.resourceName,
+         configurationItem.configurationItemStatus,
+         COUNT(configurationItem.resourceId) AS NumberOfChanges
+    FROM s3data.awsconfig
+   CROSS JOIN UNNEST(configurationitems) AS t(configurationItem)
+   WHERE "$path" LIKE '%ConfigHistory%'
+              AND configurationItem.configurationItemCaptureTime >= '2021-06-07T%'
+             AND configurationItem.configurationItemCaptureTime <= '2021-06-10T%'
+GROUP BY configurationItem.resourceType
+         , configurationItem.resourceName
+         , configurationItem.configurationItemStatus
+ORDER BY NumberOfChanges DESC
+
+# Get a list of resources changed between date using config
+SELECT configurationItem.configurationItemVersion,
+       configurationItem.configurationItemCaptureTime as fullTime,
+       configurationItem.configurationStateId,
+       configurationItem.awsAccountId,
+       configurationItem.configurationItemStatus,
+       configurationItem.resourceType,
+       configurationItem.resourceId,
+       configurationItem.resourceName,
+       configurationItem.aRN,
+       configurationItem.awsRegion,
+       configurationItem.availabilityZone,
+       configurationItem.configurationStateMd5Hash,
+       configurationItem.resourceCreationTime
+  FROM s3data.awsconfig
+ CROSS JOIN UNNEST(configurationitems) AS t(configurationItem)
+ WHERE "$path" LIKE '%ConfigHistory%'
+              AND configurationItem.configurationItemCaptureTime >= '2021-06-07T%'
+             AND configurationItem.configurationItemCaptureTime <= '2021-06-10T%'
+
+# Get number of changes by day based on config
+ SELECT result.configurationitemcapturetime,
+         count(result.configurationitemcapturetime) AS NumberOfChanges
+    FROM (
+          SELECT regexp_replace(
+                    configurationItem.configurationItemCaptureTime, '(.+)(T.+)', '$1'
+                 ) AS configurationitemcapturetime
+            FROM s3data.awsconfig
+           CROSS JOIN UNNEST(configurationitems) AS t(configurationItem)
+           WHERE "$path" LIKE '%ConfigHistory%'
+             AND configurationItem.configurationItemCaptureTime >= '2021-06-07T%'
+             AND configurationItem.configurationItemCaptureTime <= '2021-06-10T%'
+       ) result
+GROUP BY result.configurationitemcapturetime
+ORDER BY result.configurationitemcapturetime
+
+# 
+
+# Create aws config table
+CREATE EXTERNAL TABLE awsconfig (
+         fileversion string,
+         configSnapshotId string,
+         configurationitems ARRAY < STRUCT < configurationItemVersion : STRING,
+         configurationItemCaptureTime : STRING,
+         configurationStateId : BIGINT,
+         awsAccountId : STRING,
+         configurationItemStatus : STRING,
+         resourceType : STRING,
+         resourceId : STRING,
+         resourceName : STRING,
+         ARN : STRING,
+         awsRegion : STRING,
+         availabilityZone : STRING,
+         configurationStateMd5Hash : STRING,
+         resourceCreationTime : STRING > > 
+)
+ROW FORMAT SERDE 'org.apache.hive.hcatalog.data.JsonSerDe' LOCATION 's3://s3bucket/orgid/AWSLogs/accountid/Config/region/'
+
+# Create cloudtrail logs table
+
+CREATE EXTERNAL TABLE cloudtrail_logs(
+    eventVersion STRING,
+    userIdentity STRUCT<
+        type: STRING,
+        principalId: STRING,
+        arn: STRING,
+        accountId: STRING,
+        invokedBy: STRING,
+        accessKeyId: STRING,
+        userName: STRING,
+        sessionContext: STRUCT<
+            attributes: STRUCT<
+                mfaAuthenticated: STRING,
+                creationDate: STRING>,
+            sessionIssuer: STRUCT<
+                type: STRING,
+                principalId: STRING,
+                arn: STRING,
+                accountId: STRING,
+                userName: STRING>>>,
+    eventTime STRING,
+    eventSource STRING,
+    eventName STRING,
+    awsRegion STRING,
+    sourceIpAddress STRING,
+    userAgent STRING,
+    errorCode STRING,
+    errorMessage STRING,
+    requestParameters STRING,
+    responseElements STRING,
+    additionalEventData STRING,
+    requestId STRING,
+    eventId STRING,
+    readOnly STRING,
+    resources ARRAY<STRUCT<
+        arn: STRING,
+        accountId: STRING,
+        type: STRING>>,
+    eventType STRING,
+    apiVersion STRING,
+    recipientAccountId STRING,
+    serviceEventDetails STRING,
+    sharedEventID STRING,
+    vpcEndpointId STRING
+  )
+PARTITIONED BY (
+   `timestamp` string)
+ROW FORMAT SERDE 'com.amazon.emr.hive.serde.CloudTrailSerde'
+STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
+OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION 's3://s3-bucket/org-id/AWSLogs/account-id/CloudTrail/'
+TBLPROPERTIES (
+  'projection.enabled'='true', 
+  'projection.timestamp.format'='yyyy/MM/dd', 
+  'projection.timestamp.interval'='1', 
+  'projection.timestamp.interval.unit'='DAYS', 
+  'projection.timestamp.range'='2021/03/20,2021/03/21', 
+  'projection.timestamp.type'='date', 
+  'storage.location.template'='s3://s3-bucket/org-id/AWSLogs/account-id/CloudTrail/')
+
+# ELB peak Load
+SELECT elb_name,
+  count(1)
+FROM elb_logs_orc
+Where elb_response_code = '200'
+GROUP BY elb_name
+ORDER BY 2 DESC limit 10;
+
