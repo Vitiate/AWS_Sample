@@ -36,10 +36,7 @@
           "description": "Key used by default to encrypt ebs volumes",
           "enable-key-rotation": true,
           "service-principles": [
-            "ec2.amazonaws.com",
-            "ecs.amazonaws.com",
-            "ecr.amazonaws.com",
-            "eks.amazonaws.com"
+            "ec2.amazonaws.com"
           ]
         }
       ]
