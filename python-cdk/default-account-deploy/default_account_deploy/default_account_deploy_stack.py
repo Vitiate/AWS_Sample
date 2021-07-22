@@ -84,14 +84,14 @@ class DefaultAccountDeployStack(cdk.Stack):
         for subnet in private_subnet_config:
             print(subnet)
             subnet_configuration.append(aws_ec2.SubnetConfiguration(
-                subnet_type=aws_ec2.SubnetType.PRIVATE,
+                subnet_type=aws_ec2.SubnetType('PRIVATE'),
                 name=subnet["name"],
                 cidr_mask=subnet["cidr-mask"]
             ))
         for subnet in public_subnet_config:
             print(subnet)
             subnet_configuration.append(aws_ec2.SubnetConfiguration(
-                subnet_type=aws_ec2.SubnetType.PUBLIC,
+                subnet_type=aws_ec2.SubnetType('PUBLIC'),
                 name=subnet["name"],
                 cidr_mask=subnet["cidr-mask"]
             ))

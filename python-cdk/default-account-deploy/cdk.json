@@ -47,29 +47,13 @@
       "max-az": 3,
       "private-subnet-config": [
         {
-          "name": "private-subnet-0",
-          "cidr-mask": 24
-        },
-        {
-          "name": "private-subnet-1",
-          "cidr-mask": 24
-        },
-        {
-          "name": "private-subnet-2",
+          "name": "private-subnet",
           "cidr-mask": 24
         }
       ],
       "public-subnet-config": [
         {
-          "name": "public-subnet-0",
-          "cidr-mask": 24
-        },
-        {
-          "name": "public-subnet-1",
-          "cidr-mask": 24
-        },
-        {
-          "name": "public-subnet-2",
+          "name": "public-subnet",
           "cidr-mask": 24
         }
       ],

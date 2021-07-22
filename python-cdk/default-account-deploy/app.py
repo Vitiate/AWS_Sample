@@ -13,6 +13,7 @@ from default_account_deploy.default_account_deploy_stack import DefaultAccountDe
 
 
 app = core.App()
-DefaultAccountDeployStack(app, "DefaultAccountDeployStack")
+sandbox = {"account": "647874871378", "region": "us-west-2"}
+DefaultAccountDeployStack(app, "DefaultAccountDeployStack", env=sandbox)
 
 app.synth()
