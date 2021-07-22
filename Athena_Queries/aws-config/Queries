@@ -5,6 +5,8 @@ requestparameters LIKE '%sg-groupid1234%'
 ORDER BY eventtime DESC
 LIMIT 500
 
+subnet-089e6224e5633a06d
+
 # Get list of resources ordered by the number of changes using config
 SELECT configurationItem.resourceType,
          configurationItem.resourceName,
@@ -130,15 +132,15 @@ PARTITIONED BY (
 ROW FORMAT SERDE 'com.amazon.emr.hive.serde.CloudTrailSerde'
 STORED AS INPUTFORMAT 'com.amazon.emr.cloudtrail.CloudTrailInputFormat'
 OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION 's3://s3-bucket/org-id/AWSLogs/account-id/CloudTrail/'
+LOCATION 's3://aws-controltower-logs-895566095817-us-east-1/o-u0lx4mk6y2/AWSLogs/564063436012/CloudTrail/us-west-2/2021'
 TBLPROPERTIES (
   'projection.enabled'='true', 
   'projection.timestamp.format'='yyyy/MM/dd', 
   'projection.timestamp.interval'='1', 
   'projection.timestamp.interval.unit'='DAYS', 
-  'projection.timestamp.range'='2021/03/20,2021/03/21', 
+  'projection.timestamp.range'='2021/06/01,2021/06/30', 
   'projection.timestamp.type'='date', 
-  'storage.location.template'='s3://s3-bucket/org-id/AWSLogs/account-id/CloudTrail/')
+  'storage.location.template'='s3://aws-controltower-logs-895566095817-us-east-1/o-u0lx4mk6y2/AWSLogs/564063436012/CloudTrail/us-west-2/2021')
 
 # ELB peak Load
 SELECT elb_name,

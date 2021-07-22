@@ -1,0 +1,88 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
+    "@aws-cdk/core:enableStackNameDuplicates": "true",
+    "aws-cdk:enableDiffNoFail": "true",
+    "@aws-cdk/core:stackRelativeExports": "true",
+    "@aws-cdk/aws-ecr-assets:dockerIgnoreSupport": true,
+    "@aws-cdk/aws-secretsmanager:parseOwnedSecretName": true,
+    "@aws-cdk/aws-kms:defaultKeyPolicies": true,
+    "@aws-cdk/aws-s3:grantWriteWithoutAcl": true,
+    "@aws-cdk/aws-ecs-patterns:removeDefaultDesiredCount": true,
+    "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
+    "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
+    "@aws-cdk/aws-lambda:recognizeVersionProps": true,
+    "kms-config": {
+      "keys": [
+        {
+          "alias": "cloudwatch-key",
+          "description": "Key used by default to encrypt cloudwatch logs",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "logs.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "s3-bucket-key",
+          "description": "Key used by default to encrypt s3 buckets",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "s3.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "ebs-volume-key",
+          "description": "Key used by default to encrypt ebs volumes",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "ec2.amazonaws.com",
+            "ecs.amazonaws.com",
+            "ecr.amazonaws.com",
+            "eks.amazonaws.com"
+          ]
+        }
+      ]
+    },
+    "vpc-config": {
+      "vpc-name": "accountvpc",
+      "cidr-range": "10.98.0.0/16",
+      "max-az": 3,
+      "private-subnet-config": [
+        {
+          "name": "private-subnet-0",
+          "cidr-mask": 24
+        },
+        {
+          "name": "private-subnet-1",
+          "cidr-mask": 24
+        },
+        {
+          "name": "private-subnet-2",
+          "cidr-mask": 24
+        }
+      ],
+      "public-subnet-config": [
+        {
+          "name": "public-subnet-0",
+          "cidr-mask": 24
+        },
+        {
+          "name": "public-subnet-1",
+          "cidr-mask": 24
+        },
+        {
+          "name": "public-subnet-2",
+          "cidr-mask": 24
+        }
+      ],
+      "nat-gateway-provider": "gateway",
+      "nat-gateways": 1,
+      "flowlog-config": {
+        "destination": "s3",
+        "bucket-name": "flow-logs",
+        "traffic_type": "ALL"
+      }
+    }
+  }
+}
