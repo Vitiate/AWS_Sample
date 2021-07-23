@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-
+import boto3
 from aws_cdk import core as cdk
 
 # For consistency with TypeScript code, `cdk` is the preferred import name for
@@ -10,10 +10,15 @@ from aws_cdk import core as cdk
 from aws_cdk import core
 
 from default_account_deploy.default_account_deploy_stack import DefaultAccountDeployStack
+try:
+    client = boto3.client("sts")
+    account_id = client.get_caller_identity()["Account"]
+    region = os.environ['AWS_REGION']
+    app = core.App()
+    print(f"Running in {account_id}/{region}")
+    env = {"account": account_id, "region": region}
+    DefaultAccountDeployStack(app, "DefaultAccountDeployStack", env=env)
 
-
-app = core.App()
-sandbox = {"account": "647874871378", "region": "us-west-2"}
-DefaultAccountDeployStack(app, "DefaultAccountDeployStack", env=sandbox)
-
-app.synth()
+    app.synth()
+except Exception as e:
+    print(f"Error {e}")
