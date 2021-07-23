@@ -52,6 +52,26 @@
       "cloudwatch-endpoint": true,
       "ssm-endpoint": true,
       "secretsmanager-endpoint": true,
+      "private-routetable": {
+        "name": "private-route-table",
+        "routes": [
+          {
+            "destination-cidr-block": "0.0.0.0/0",
+            "gateway": "NAT_GATEWAY",
+            "router-type": "RouterType.GATEWAY"
+          }
+        ]
+      },
+      "public-routetable": {
+        "name": "public-route-table",
+        "routes": [
+          {
+            "destination-cidr-block": "0.0.0.0/0",
+            "gateway": "INTERNET_GATEWAY",
+            "router-type": "RouterType.GATEWAY"
+          }
+        ]
+      },
       "private-subnet-config": [
         {
           "name": "private-subnet",
