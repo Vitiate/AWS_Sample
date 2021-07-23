@@ -45,6 +45,13 @@
       "vpc-name": "accountvpc",
       "cidr-range": "10.98.0.0/16",
       "max-az": 3,
+      "gateway-endpoints": ["s3","dynamodb"],
+      "interface-endpoints": [ "logs","ssm","ssmmessages","secretsmanager"],
+      "s3-gateway": true,
+      "dynamo-endpoint": true,
+      "cloudwatch-endpoint": true,
+      "ssm-endpoint": true,
+      "secretsmanager-endpoint": true,
       "private-subnet-config": [
         {
           "name": "private-subnet",

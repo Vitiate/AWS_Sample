@@ -111,4 +111,28 @@ class DefaultAccountDeployStack(cdk.Stack):
                 traffic_type=aws_ec2.FlowLogTrafficType(
                     flowlog_config['traffic_type'])
             )
+
+        # Delete the default route tables associated with the subnets
+        
+
+
+        ############################
+        # Gateway Endpoints        #
+        ############################
+        gateway_endpoints = vpc_config['gateway-endpoints']
+        for endpoint in gateway_endpoints:
+            self.vpc.add_gateway_endpoint(
+                id=f"{endpoint}-endpoint",
+                service=aws_ec2.GatewayVpcEndpointAwsService(endpoint)
+            )
+        ############################
+        # Interface Endpoints      #
+        ############################
+        interface_endpoints = vpc_config['interface-endpoints']
+        for endpoint in interface_endpoints:
+            self.vpc.add_gateway_endpoint(
+                id=f"{endpoint}-endpoint",
+                service=aws_ec2.InterfaceVpcEndpointAwsService(endpoint)
+            )
+
         self.vpc_id = self.vpc.vpc_id
