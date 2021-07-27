@@ -181,6 +181,5 @@ class DefaultAccountDeployStack(cdk.Stack):
                 self,
                 id=f"{endpoint}",
                 service=aws_ec2.InterfaceVpcEndpointAwsService(endpoint),
-                subnets=self.vpc.private_subnets,
                 vpc=self.vpc
             )
