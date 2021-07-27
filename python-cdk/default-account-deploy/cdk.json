@@ -50,10 +50,10 @@
         "dynamodb"
       ],
       "interface-endpoints": [
-        "com.amazonaws.us-west-2.logs",
-        "com.amazonaws.us-west-2.ssm",
-        "com.amazonaws.us-west-2.ssmmessages",
-        "com.amazonaws.us-west-2.secretsmanager"
+        "logs",
+        "ssm",
+        "ssmmessages",
+        "secretsmanager"
       ],
       "s3-gateway": true,
       "dynamo-endpoint": true,
