@@ -1,0 +1,556 @@
+Running in 647874871378/us-west-2
+Create cloudwatch-key
+Grant E/D to on cloudwatch-key to logs.amazonaws.com
+Create s3-bucket-key
+Grant E/D to on s3-bucket-key to s3.amazonaws.com
+Create ebs-volume-key
+Grant E/D to on ebs-volume-key to ec2.amazonaws.com
+{'name': 'private-subnet', 'cidr-mask': 24}
+{'name': 'public-subnet', 'cidr-mask': 24}
+[SubnetConfiguration(name='private-subnet', subnet_type=<SubnetType.PRIVATE: 'PRIVATE'>, cidr_mask=24), SubnetConfiguration(name='public-subnet', subnet_type=<SubnetType.PUBLIC: 'PUBLIC'>, cidr_mask=24)]
+vpc in
+flowlog in
+s3
+dynamodb
+Resources:
+  cloudwatchkeyD49A3AC3:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::647874871378:root
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              Service: logs.us-west-2.amazonaws.com
+            Resource: "*"
+        Version: "2012-10-17"
+      Description: Key used by default to encrypt cloudwatch logs
+      Enabled: true
+      EnableKeyRotation: true
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/cloudwatch-key/Resource
+  cloudwatchkeyAlias27569712:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/cloudwatch-key
+      TargetKeyId:
+        Fn::GetAtt:
+          - cloudwatchkeyD49A3AC3
+          - Arn
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/cloudwatch-key/Alias/Resource
+  s3bucketkey60A2F817:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::647874871378:root
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Resource: "*"
+        Version: "2012-10-17"
+      Description: Key used by default to encrypt s3 buckets
+      Enabled: true
+      EnableKeyRotation: true
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/s3-bucket-key/Resource
+  s3bucketkeyAliasF608F6F6:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/s3-bucket-key
+      TargetKeyId:
+        Fn::GetAtt:
+          - s3bucketkey60A2F817
+          - Arn
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/s3-bucket-key/Alias/Resource
+  ebsvolumekey5B0482CE:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Statement:
+          - Action: kms:*
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - :iam::647874871378:root
+            Resource: "*"
+          - Action:
+              - kms:Decrypt
+              - kms:Encrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Resource: "*"
+        Version: "2012-10-17"
+      Description: Key used by default to encrypt ebs volumes
+      Enabled: true
+      EnableKeyRotation: true
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ebs-volume-key/Resource
+  ebsvolumekeyAliasC1E48DBA:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ebs-volume-key
+      TargetKeyId:
+        Fn::GetAtt:
+          - ebsvolumekey5B0482CE
+          - Arn
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ebs-volume-key/Alias/Resource
+  S3BucketForVPCFlowLogs189FDFE2:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID:
+                Fn::GetAtt:
+                  - s3bucketkey60A2F817
+                  - Arn
+              SSEAlgorithm: aws:kms
+      BucketName: accountvpc-flow-logs-45030965
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/S3BucketForVPCFlowLogs/Resource
+  accountvpc04908428:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.98.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/Resource
+  accountvpcprivatesubnetSubnet1Subnet15DB1887:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.0.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: private-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1/Subnet
+  accountvpcprivatesubnetSubnet1RouteTable7198E4E2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1/RouteTable
+  accountvpcprivatesubnetSubnet1RouteTableAssociation660BE9B5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet1RouteTable7198E4E2
+      SubnetId:
+        Ref: accountvpcprivatesubnetSubnet1Subnet15DB1887
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1/RouteTableAssociation
+  accountvpcprivatesubnetSubnet1DefaultRoute57295D96:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet1RouteTable7198E4E2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: accountvpcpublicsubnetSubnet1NATGateway8F29D7E3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet1/DefaultRoute
+  accountvpcprivatesubnetSubnet2Subnet2EAE659D:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.1.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2b
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: private-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2/Subnet
+  accountvpcprivatesubnetSubnet2RouteTableE890606A:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2/RouteTable
+  accountvpcprivatesubnetSubnet2RouteTableAssociation76A4F9FC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet2RouteTableE890606A
+      SubnetId:
+        Ref: accountvpcprivatesubnetSubnet2Subnet2EAE659D
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2/RouteTableAssociation
+  accountvpcprivatesubnetSubnet2DefaultRoute0672DC79:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet2RouteTableE890606A
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: accountvpcpublicsubnetSubnet1NATGateway8F29D7E3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet2/DefaultRoute
+  accountvpcprivatesubnetSubnet3Subnet9FCFBD94:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.2.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2c
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: private-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3/Subnet
+  accountvpcprivatesubnetSubnet3RouteTableF10F534C:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3/RouteTable
+  accountvpcprivatesubnetSubnet3RouteTableAssociation53F2EE02:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet3RouteTableF10F534C
+      SubnetId:
+        Ref: accountvpcprivatesubnetSubnet3Subnet9FCFBD94
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3/RouteTableAssociation
+  accountvpcprivatesubnetSubnet3DefaultRoute33BA329C:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcprivatesubnetSubnet3RouteTableF10F534C
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: accountvpcpublicsubnetSubnet1NATGateway8F29D7E3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/private-subnetSubnet3/DefaultRoute
+  accountvpcpublicsubnetSubnet1Subnet349121DD:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.3.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: public-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/Subnet
+  accountvpcpublicsubnetSubnet1RouteTableD184FE3D:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/RouteTable
+  accountvpcpublicsubnetSubnet1RouteTableAssociation56C1022C:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet1RouteTableD184FE3D
+      SubnetId:
+        Ref: accountvpcpublicsubnetSubnet1Subnet349121DD
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/RouteTableAssociation
+  accountvpcpublicsubnetSubnet1DefaultRoute00A9D81A:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet1RouteTableD184FE3D
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    DependsOn:
+      - accountvpcVPCGW406F6460
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/DefaultRoute
+  accountvpcpublicsubnetSubnet1EIP17331F89:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/EIP
+  accountvpcpublicsubnetSubnet1NATGateway8F29D7E3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - accountvpcpublicsubnetSubnet1EIP17331F89
+          - AllocationId
+      SubnetId:
+        Ref: accountvpcpublicsubnetSubnet1Subnet349121DD
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet1/NATGateway
+  accountvpcpublicsubnetSubnet2SubnetC28A82D6:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.4.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2b
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: public-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2/Subnet
+  accountvpcpublicsubnetSubnet2RouteTableFDDC37A2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2/RouteTable
+  accountvpcpublicsubnetSubnet2RouteTableAssociation8325481B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet2RouteTableFDDC37A2
+      SubnetId:
+        Ref: accountvpcpublicsubnetSubnet2SubnetC28A82D6
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2/RouteTableAssociation
+  accountvpcpublicsubnetSubnet2DefaultRoute85ED7A30:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet2RouteTableFDDC37A2
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    DependsOn:
+      - accountvpcVPCGW406F6460
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet2/DefaultRoute
+  accountvpcpublicsubnetSubnet3SubnetEEC67DD5:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.98.5.0/24
+      VpcId:
+        Ref: accountvpc04908428
+      AvailabilityZone: us-west-2c
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: public-subnet
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3/Subnet
+  accountvpcpublicsubnetSubnet3RouteTable7CC940A5:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3/RouteTable
+  accountvpcpublicsubnetSubnet3RouteTableAssociationBF70C63B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet3RouteTable7CC940A5
+      SubnetId:
+        Ref: accountvpcpublicsubnetSubnet3SubnetEEC67DD5
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3/RouteTableAssociation
+  accountvpcpublicsubnetSubnet3DefaultRouteCB8288FC:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet3RouteTable7CC940A5
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    DependsOn:
+      - accountvpcVPCGW406F6460
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/public-subnetSubnet3/DefaultRoute
+  accountvpcIGWC14B9B73:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/IGW
+  accountvpcVPCGW406F6460:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: accountvpc04908428
+      InternetGatewayId:
+        Ref: accountvpcIGWC14B9B73
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/VPCGW
+  accountvpcflowlogFlowLog1011A97A:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      ResourceId:
+        Ref: accountvpc04908428
+      ResourceType: VPC
+      TrafficType: ALL
+      LogDestination:
+        Fn::GetAtt:
+          - S3BucketForVPCFlowLogs189FDFE2
+          - Arn
+      LogDestinationType: s3
+      Tags:
+        - Key: Name
+          Value: DefaultAccountDeployStack/accountvpc
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/accountvpc/flowlog/FlowLog
+  s3100BEDFB:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName:
+        Fn::Join:
+          - ""
+          - - com.amazonaws.
+            - Ref: AWS::Region
+            - .s3
+      VpcId:
+        Ref: accountvpc04908428
+      RouteTableIds:
+        - Ref: accountvpcprivatesubnetSubnet1RouteTable7198E4E2
+        - Ref: accountvpcprivatesubnetSubnet2RouteTableE890606A
+        - Ref: accountvpcprivatesubnetSubnet3RouteTableF10F534C
+      VpcEndpointType: Gateway
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/s3/Resource
+  dynamodbC0A56799:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName:
+        Fn::Join:
+          - ""
+          - - com.amazonaws.
+            - Ref: AWS::Region
+            - .dynamodb
+      VpcId:
+        Ref: accountvpc04908428
+      RouteTableIds:
+        - Ref: accountvpcprivatesubnetSubnet1RouteTable7198E4E2
+        - Ref: accountvpcprivatesubnetSubnet2RouteTableE890606A
+        - Ref: accountvpcprivatesubnetSubnet3RouteTableF10F534C
+      VpcEndpointType: Gateway
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/dynamodb/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAAE01Qy07DMBD8Fu5bl1AJiRshKqgCIStFvTvuQk0Su7LXRJXlf8duEsJpHjtrj7Zgxe09K24exeBW8tiugzQWWdiTkC1URjuyXhLU6Iy3EqH61DOPkJdC2zsWXvGSRxnKTgmXxZVEcBsWnrxskbI5sggo71g4nGX2DrwCbtWPINz7Ro/BhdXGE36IpsPFX7zSOSOVIGX0Xxi4bzollye2O57hXdBL+mQQ17I7TWhT4J+VmkyqpHSBU4+a4Lkzw5v5yvOZTqHUf6uPZ6M0TduzjDECv9DJ6PWGPaQDfzulVtZrUj2yesRfOqRLQX0BAAA=
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/CDKMetadata/Default
+

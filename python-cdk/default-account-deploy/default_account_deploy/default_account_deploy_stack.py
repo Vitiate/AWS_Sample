@@ -10,12 +10,6 @@ import aws_cdk.aws_iam as aws_iam
 
 class DefaultAccountDeployStack(cdk.Stack):
 
-    def _get_gateway_id(self, gateway):
-        if gateway == "INTERNET_GATEWAY":
-            gateway_id = self.vpc.internet_gateway_id
-        elif gateway == "NAT_GATEWAY":
-            gateway_id = self.nat_gateway.node #need to get 
-
     def __init__(self, scope: cdk.Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
@@ -62,7 +56,7 @@ class DefaultAccountDeployStack(cdk.Stack):
                     restrict_public_buckets=True
                 )
                 s3_bucket = aws_s3.Bucket(
-                    self, 'S3BucketForCloudTrailEvents', block_public_access=block_pub,
+                    self, 'S3BucketForVPCFlowLogs', block_public_access=block_pub,
                     bucket_name=s3_bucketname,
                     removal_policy=core.RemovalPolicy.DESTROY,
                     encryption_key=s3_bucket_key,
@@ -87,6 +81,7 @@ class DefaultAccountDeployStack(cdk.Stack):
         subnet_configuration = []
 
         for subnet in private_subnet_config:
+            # Build the private subnet as isolated to keep from autogenerating nat gateways.
             print(subnet)
             subnet_configuration.append(aws_ec2.SubnetConfiguration(
                 subnet_type=aws_ec2.SubnetType('PRIVATE'),
@@ -107,9 +102,12 @@ class DefaultAccountDeployStack(cdk.Stack):
                                id=vpc_config["vpc-name"],
                                cidr=vpc_config["cidr-range"],
                                max_azs=vpc_config["max-az"],
-                               subnet_configuration=subnet_configuration
+                               subnet_configuration=subnet_configuration,
+                               nat_gateways=vpc_config['nat-gateways']
                                )
+        self.vpc_id = self.vpc.vpc_id
 
+        print("vpc in")
         if flowlog_enabled:
             self.vpc.add_flow_log(
                 id="flowlog",
@@ -117,75 +115,72 @@ class DefaultAccountDeployStack(cdk.Stack):
                 traffic_type=aws_ec2.FlowLogTrafficType(
                     flowlog_config['traffic_type'])
             )
+        print("flowlog in")
 
-        # Create the NAT Gateways in public subnets
-        for i in range(vpc_config['nat-gateways']):
-            self.nat_gateway = aws_ec2.CfnNatGateway(
-                self,
-                id="nat-gateway",
-                subnet_id=self.vpc.public_subnets[i].subnet_id
-            )
+#        # Create Route tables
+#        public_routetable_config = vpc_config["public-routetable"]
+#        print("Building route tables")
+#        self.public_routetable = aws_ec2.CfnRouteTable(
+#            self,
+#            public_routetable_config["name"],
+#            vpc_id=self.vpc_id,
+#            tags=[{'key': 'Name',
+#                   'value': public_routetable_config["name"]}]
+#        )
+#        # Delete the default public route tables associated with the subnets, associate new route tables
+#        print("Delete the default routes and tables")
+#        i = 0
+#        for subnet in self.vpc.public_subnets:
+#            subnet.node.try_remove_child('RouteTableAssociation')
+#            subnet.node.try_remove_child('DefaultRoute')
+#            subnet.node.try_remove_child('RouteTable')
+#            aws_ec2.CfnSubnetRouteTableAssociation(
+#                self,
+#                id=f"public-{i}",
+#                route_table_id=self.public_routetable.ref,
+#                subnet_id=subnet.subnet_id
+#            )
+#            i = i+1
+#
+#        # Create routes on Route tables
+#        print("Create the routes ")
+#        id = 0
+#        print(public_routetable_config)
+#        for route in public_routetable_config['routes']:
+#            id = id + 1
+#            if route['gateway'] == "INTERNET_GATEWAY":
+#                print("inpoutes")
+#                aws_ec2.CfnRoute(
+#                    self,
+#                    id=f"public-route-{id}",
+#                    route_table_id=self.public_routetable.ref,
+#                    destination_cidr_block=route['destination-cidr-block'],
+#                    gateway_id=self.vpc.internet_gateway_id
+#                )
+#            id = 0
 
-        # Delete the default route tables associated with the subnets
-
-        # Create Route tables
-        private_routetable_config = vpc_config["private-routetable"]
-        public_routetable_config = vpc_config["public-routetable"]
-        private_routetable = aws_ec2.CfnRouteTable(
-            self,
-            private_routetable_config["name"],
-            vpc_id=self.vpc_id,
-            tags=[{'key': 'Name',
-                   'value': private_routetable_config["name"]}]
-        )
-        public_routetable = aws_ec2.CfnRouteTable(
-            self,
-            public_routetable_config["name"],
-            vpc_id=self.vpc_id,
-            tags=[{'key': 'Name',
-                   'value': public_routetable_config["name"]}]
-        )
-
-        # Create routes on Route tables
-        id = 0
-        for route in public_routetable_config['routes']:
-            id = id + 1
-            if route["gateway"] == "INTERNET_GATEWAY":
-                gateway_id = self.vpc.internet_gateway_id
-            aws_ec2.CfnRoute(
-                id=id,
-                destination_cidr_block=route['destination-cidr-block'],
-                gateway_id=gateway_id
-            )
-        id = 0
-        for route in private_routetable_config['routes']:
-            id = id + 1
-            if route["gateway"] == "INTERNET_GATEWAY":
-                id = id + 1
-                gateway_id = self.vpc.internet_gateway_id
-            aws_ec2.CfnRoute(
-                id=id,
-                destination_cidr_block=route['destination-cidr-block'],
-                gateway_id=gateway_id
-            )
-
-        ############################
-        # Gateway Endpoints        #
-        ############################
+#        ############################
+#        # Gateway Endpoints        #
+#        ############################
         gateway_endpoints = vpc_config['gateway-endpoints']
         for endpoint in gateway_endpoints:
-            self.vpc.add_gateway_endpoint(
-                id=f"{endpoint}-endpoint",
-                service=aws_ec2.GatewayVpcEndpointAwsService(endpoint)
-            )
-        ############################
-        # Interface Endpoints      #
-        ############################
-        interface_endpoints = vpc_config['interface-endpoints']
-        for endpoint in interface_endpoints:
-            self.vpc.add_gateway_endpoint(
-                id=f"{endpoint}-endpoint",
-                service=aws_ec2.InterfaceVpcEndpointAwsService(endpoint)
+            aws_ec2.GatewayVpcEndpoint(
+                self,
+                id=f"{endpoint}",
+                service=aws_ec2.GatewayVpcEndpointAwsService(endpoint),
+                subnets=self.vpc.private_subnets,
+                vpc=self.vpc
             )
 
-        self.vpc_id = self.vpc.vpc_id
+#        ############################
+#        # Interface Endpoints      #
+#        ############################
+        interface_endpoints = vpc_config['interface-endpoints']
+        for endpoint in interface_endpoints:
+            aws_ec2.InterfaceVpcEndpoint(
+                self,
+                id=f"{endpoint}",
+                service=aws_ec2.InterfaceVpcEndpointAwsService(endpoint),
+                subnets=self.vpc.private_subnets,
+                vpc=self.vpc
+            )

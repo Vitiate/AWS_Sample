@@ -45,8 +45,16 @@
       "vpc-name": "accountvpc",
       "cidr-range": "10.98.0.0/16",
       "max-az": 3,
-      "gateway-endpoints": ["s3","dynamodb"],
-      "interface-endpoints": [ "logs","ssm","ssmmessages","secretsmanager"],
+      "gateway-endpoints": [
+        "s3",
+        "dynamodb"
+      ],
+      "interface-endpoints": [
+        "logs",
+        "ssm",
+        "ssmmessages",
+        "secretsmanager"
+      ],
       "s3-gateway": true,
       "dynamo-endpoint": true,
       "cloudwatch-endpoint": true,
@@ -54,23 +62,11 @@
       "secretsmanager-endpoint": true,
       "private-routetable": {
         "name": "private-route-table",
-        "routes": [
-          {
-            "destination-cidr-block": "0.0.0.0/0",
-            "gateway": "NAT_GATEWAY",
-            "router-type": "RouterType.GATEWAY"
-          }
-        ]
+        "routes": []
       },
       "public-routetable": {
         "name": "public-route-table",
-        "routes": [
-          {
-            "destination-cidr-block": "0.0.0.0/0",
-            "gateway": "INTERNET_GATEWAY",
-            "router-type": "RouterType.GATEWAY"
-          }
-        ]
+        "routes": []
       },
       "private-subnet-config": [
         {
