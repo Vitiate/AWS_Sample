@@ -55,11 +55,6 @@
         "ssmmessages",
         "secretsmanager"
       ],
-      "s3-gateway": true,
-      "dynamo-endpoint": true,
-      "cloudwatch-endpoint": true,
-      "ssm-endpoint": true,
-      "secretsmanager-endpoint": true,
       "private-routetable": {
         "name": "private-route-table",
         "routes": []
