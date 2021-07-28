@@ -45,6 +45,8 @@
       "vpc-name": "accountvpc",
       "cidr-range": "10.98.0.0/16",
       "max-az": 3,
+      "nat-gateway-provider": "gateway",
+      "nat-gateways": 1,
       "gateway-endpoints": [
         "s3",
         "dynamodb"
@@ -81,8 +83,6 @@
           "cidr-mask": 24
         }
       ],
-      "nat-gateway-provider": "gateway",
-      "nat-gateways": 1,
       "flowlog-config": {
         "destination": "s3",
         "bucket-name": "flow-logs",
