@@ -117,47 +117,37 @@ class DefaultAccountDeployStack(cdk.Stack):
             )
         print("flowlog in")
 
-#        # Create Route tables
-#        public_routetable_config = vpc_config["public-routetable"]
-#        print("Building route tables")
-#        self.public_routetable = aws_ec2.CfnRouteTable(
-#            self,
-#            public_routetable_config["name"],
-#            vpc_id=self.vpc_id,
-#            tags=[{'key': 'Name',
-#                   'value': public_routetable_config["name"]}]
-#        )
-#        # Delete the default public route tables associated with the subnets, associate new route tables
-#        print("Delete the default routes and tables")
-#        i = 0
-#        for subnet in self.vpc.public_subnets:
-#            subnet.node.try_remove_child('RouteTableAssociation')
-#            subnet.node.try_remove_child('DefaultRoute')
-#            subnet.node.try_remove_child('RouteTable')
-#            aws_ec2.CfnSubnetRouteTableAssociation(
-#                self,
-#                id=f"public-{i}",
-#                route_table_id=self.public_routetable.ref,
-#                subnet_id=subnet.subnet_id
-#            )
-#            i = i+1
-#
-#        # Create routes on Route tables
-#        print("Create the routes ")
-#        id = 0
-#        print(public_routetable_config)
-#        for route in public_routetable_config['routes']:
-#            id = id + 1
-#            if route['gateway'] == "INTERNET_GATEWAY":
-#                print("inpoutes")
-#                aws_ec2.CfnRoute(
-#                    self,
-#                    id=f"public-route-{id}",
-#                    route_table_id=self.public_routetable.ref,
-#                    destination_cidr_block=route['destination-cidr-block'],
-#                    gateway_id=self.vpc.internet_gateway_id
-#                )
-#            id = 0
+        public_routetable_config = vpc_config['public-routetable']
+        private_routetable_config = vpc_config['private-routetable']
+       # Create routes on Route tables
+        print("Create the public routes ")
+        id = 1
+        print(public_routetable_config)
+        for subnet in self.vpc.public_subnets:
+            for route in public_routetable_config['routes']:
+                id = id + 1
+                aws_ec2.CfnRoute(
+                    self,
+                    id=f"public-route-{id}",
+                    route_table_id=subnet.route_table.route_table_id,
+                    destination_cidr_block=route['destination-cidr-block'],
+                    **{route['gateway-type']: getattr(self.vpc, route['gateway-id'])}
+                )
+
+        print("Create the private routes ")
+        id = 0
+        print(private_routetable_config)
+        for subnet in self.vpc.public_subnets:
+            for route in public_routetable_config['routes']:
+                id = id + 1
+                aws_ec2.CfnRoute(
+                    self,
+                    id=f"public-route-{id}",
+                    route_table_id=subnet.route_table.route_table_id,
+                    destination_cidr_block=route['destination-cidr-block'],
+                    **{route['gateway-type']: getattr(self.vpc, route['gateway-id'])}
+                )
+
 
 #        ############################
 #        # Gateway Endpoints        #

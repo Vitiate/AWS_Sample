@@ -10,8 +10,12 @@ Grant E/D to on ebs-volume-key to ec2.amazonaws.com
 [SubnetConfiguration(name='private-subnet', subnet_type=<SubnetType.PRIVATE: 'PRIVATE'>, cidr_mask=24), SubnetConfiguration(name='public-subnet', subnet_type=<SubnetType.PUBLIC: 'PUBLIC'>, cidr_mask=24)]
 vpc in
 flowlog in
-s3
-dynamodb
+Create the public routes 
+{'name': 'public-route-table', 'routes': [{'destination-cidr-block': '131.232.1.0/24', 'gateway-type': 'gateway_id', 'gateway-id': 'internet_gateway_id'}]}
+Creating public-route-2
+Creating public-route-3
+Creating public-route-4
+Create the private routes 
 Resources:
   cloudwatchkeyD49A3AC3:
     Type: AWS::KMS::Key
@@ -150,7 +154,7 @@ Resources:
                   - s3bucketkey60A2F817
                   - Arn
               SSEAlgorithm: aws:kms
-      BucketName: accountvpc-flow-logs-45030965
+      BucketName: accountvpc-flow-logs-9385150
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -511,6 +515,36 @@ Resources:
           Value: DefaultAccountDeployStack/accountvpc
     Metadata:
       aws:cdk:path: DefaultAccountDeployStack/accountvpc/flowlog/FlowLog
+  publicroute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet1RouteTableD184FE3D
+      DestinationCidrBlock: 131.232.1.0/24
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/public-route-2
+  publicroute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet2RouteTableFDDC37A2
+      DestinationCidrBlock: 131.232.1.0/24
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/public-route-3
+  publicroute4:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: accountvpcpublicsubnetSubnet3RouteTable7CC940A5
+      DestinationCidrBlock: 131.232.1.0/24
+      GatewayId:
+        Ref: accountvpcIGWC14B9B73
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/public-route-4
   s3100BEDFB:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -547,10 +581,194 @@ Resources:
       VpcEndpointType: Gateway
     Metadata:
       aws:cdk:path: DefaultAccountDeployStack/dynamodb/Resource
+  logsSecurityGroupC52EBBCA:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DefaultAccountDeployStack/logs/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::GetAtt:
+              - accountvpc04908428
+              - CidrBlock
+          Description:
+            Fn::Join:
+              - ""
+              - - "from "
+                - Fn::GetAtt:
+                    - accountvpc04908428
+                    - CidrBlock
+                - :443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      VpcId:
+        Ref: accountvpc04908428
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/logs/SecurityGroup/Resource
+  logs0B6081B1:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.us-west-2.logs
+      VpcId:
+        Ref: accountvpc04908428
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - logsSecurityGroupC52EBBCA
+            - GroupId
+      SubnetIds:
+        - Ref: accountvpcprivatesubnetSubnet1Subnet15DB1887
+        - Ref: accountvpcprivatesubnetSubnet2Subnet2EAE659D
+        - Ref: accountvpcprivatesubnetSubnet3Subnet9FCFBD94
+      VpcEndpointType: Interface
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/logs/Resource
+  ssmSecurityGroup9DAED07E:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DefaultAccountDeployStack/ssm/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::GetAtt:
+              - accountvpc04908428
+              - CidrBlock
+          Description:
+            Fn::Join:
+              - ""
+              - - "from "
+                - Fn::GetAtt:
+                    - accountvpc04908428
+                    - CidrBlock
+                - :443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      VpcId:
+        Ref: accountvpc04908428
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ssm/SecurityGroup/Resource
+  ssm85049941:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.us-west-2.ssm
+      VpcId:
+        Ref: accountvpc04908428
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - ssmSecurityGroup9DAED07E
+            - GroupId
+      SubnetIds:
+        - Ref: accountvpcprivatesubnetSubnet1Subnet15DB1887
+        - Ref: accountvpcprivatesubnetSubnet2Subnet2EAE659D
+        - Ref: accountvpcprivatesubnetSubnet3Subnet9FCFBD94
+      VpcEndpointType: Interface
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ssm/Resource
+  ssmmessagesSecurityGroup5EB23C2B:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DefaultAccountDeployStack/ssmmessages/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::GetAtt:
+              - accountvpc04908428
+              - CidrBlock
+          Description:
+            Fn::Join:
+              - ""
+              - - "from "
+                - Fn::GetAtt:
+                    - accountvpc04908428
+                    - CidrBlock
+                - :443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      VpcId:
+        Ref: accountvpc04908428
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ssmmessages/SecurityGroup/Resource
+  ssmmessages231B189B:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.us-west-2.ssmmessages
+      VpcId:
+        Ref: accountvpc04908428
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - ssmmessagesSecurityGroup5EB23C2B
+            - GroupId
+      SubnetIds:
+        - Ref: accountvpcprivatesubnetSubnet1Subnet15DB1887
+        - Ref: accountvpcprivatesubnetSubnet2Subnet2EAE659D
+        - Ref: accountvpcprivatesubnetSubnet3Subnet9FCFBD94
+      VpcEndpointType: Interface
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/ssmmessages/Resource
+  secretsmanagerSecurityGroup2704C08A:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DefaultAccountDeployStack/secretsmanager/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::GetAtt:
+              - accountvpc04908428
+              - CidrBlock
+          Description:
+            Fn::Join:
+              - ""
+              - - "from "
+                - Fn::GetAtt:
+                    - accountvpc04908428
+                    - CidrBlock
+                - :443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      VpcId:
+        Ref: accountvpc04908428
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/secretsmanager/SecurityGroup/Resource
+  secretsmanager23EB8D5A:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.us-west-2.secretsmanager
+      VpcId:
+        Ref: accountvpc04908428
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - Fn::GetAtt:
+            - secretsmanagerSecurityGroup2704C08A
+            - GroupId
+      SubnetIds:
+        - Ref: accountvpcprivatesubnetSubnet1Subnet15DB1887
+        - Ref: accountvpcprivatesubnetSubnet2Subnet2EAE659D
+        - Ref: accountvpcprivatesubnetSubnet3Subnet9FCFBD94
+      VpcEndpointType: Interface
+    Metadata:
+      aws:cdk:path: DefaultAccountDeployStack/secretsmanager/Resource
   CDKMetadata:
     Type: AWS::CDK::Metadata
     Properties:
-      Analytics: v2:deflate64:H4sIAAAAAAAAE01Qy07DMBD8Fu5bl1AJiRshKqgCIStFvTvuQk0Su7LXRJXlf8duEsJpHjtrj7Zgxe09K24exeBW8tiugzQWWdiTkC1URjuyXhLU6Iy3EqH61DOPkJdC2zsWXvGSRxnKTgmXxZVEcBsWnrxskbI5sggo71g4nGX2DrwCbtWPINz7Ro/BhdXGE36IpsPFX7zSOSOVIGX0Xxi4bzollye2O57hXdBL+mQQ17I7TWhT4J+VmkyqpHSBU4+a4Lkzw5v5yvOZTqHUf6uPZ6M0TduzjDECv9DJ6PWGPaQDfzulVtZrUj2yesRfOqRLQX0BAAA=
+      Analytics: v2:deflate64:H4sIAAAAAAAAE01R32+DIBD+W/ZO6VyTJXubM13TbFmMLn1Hel2ZCgaOGUP43wdqq0/fj/vuOCChyeMzTR5eWW82/FxvHVcaqCuR8ZpkShrUliMpwCirOZDsIm/ck9jk6tZQ9wFDLEVIG8FMFCPxxOyoe7O8BozmxDwB/kTdqePRO+UZybX4YwilreQUXFihLMI3qxpY/MVLjVFcMBRK3sMkt1Uj+DJif8wjfDE8hEN6Ni57lAg6BFZW2GRWKYYXuLYgkbw3qv9UP7F+o3Mo7L+X504JiXP3XY7DL4zDOlMCt1rgcNDKduNl1ob3nuQDXpXc7uhL+JRfI8RGW4miBVpM+A86qbkisQEAAA==
     Metadata:
       aws:cdk:path: DefaultAccountDeployStack/CDKMetadata/Default
 
