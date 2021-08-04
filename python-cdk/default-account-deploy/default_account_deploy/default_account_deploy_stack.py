@@ -15,7 +15,7 @@ class DefaultAccountDeployStack(cdk.Stack):
 
         # Grab the configuration for the vpc
         vpc_config = self.node.try_get_context("vpc-config")
-
+        self.tag_config = self.node.try_get_context("tags")
         # Create the base kms managed keys for s3 and loggroup encryption
         kms_config = self.node.try_get_context("kms-config")
         keys = []  # Collect the key's for later use

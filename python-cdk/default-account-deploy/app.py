@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 import boto3
+import subprocess
+from aws_cdk.core import Tags
 from aws_cdk import core as cdk
 
 # For consistency with TypeScript code, `cdk` is the preferred import name for
@@ -18,6 +20,27 @@ try:
     print(f"Running in {account_id}/{region}")
     env = {"account": account_id, "region": region}
     DefaultAccountDeployStack(app, "DefaultAccountDeployStack", env=env)
+
+    print("Obtaining repo info for tagging")
+    label = str(subprocess.check_output(
+        ["git",  "describe", "--always"]))
+    origin = str(subprocess.check_output(
+        ["git", "config", "--get", "remote.origin.url"]))
+
+    origin = origin.split('\'')[1]
+    label = label.split('\'')[1]
+
+    origin = origin.rstrip('\\n')
+    label = label.rstrip('\\n')
+    print(f"Origin: {origin}")
+    print(f"Description: {label}")
+    Tags.of(app).add(key="git:repository", value=origin)
+    Tags.of(app).add(key="git:description", value=label)
+    tag_config = app.node.try_get_context("tags")
+    print(tag_config)
+    for tag in tag_config:
+        Tags.of(app).add(key=tag['Key'], value=tag['Value'])
+    app.synth()
 
     app.synth()
 except Exception as e:
