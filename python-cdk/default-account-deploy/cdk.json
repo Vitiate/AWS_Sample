@@ -61,7 +61,9 @@
         "logs",
         "ssm",
         "ssmmessages",
-        "secretsmanager"
+        "secretsmanager",
+        "ec2",
+        "ec2messages"
       ],
       "private-routetable": {
         "name": "private-route-table",
