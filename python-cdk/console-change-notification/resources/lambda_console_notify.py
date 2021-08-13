@@ -171,13 +171,21 @@ def lambda_handler(event, context) -> None:
                     logger.info(message)
             return response['ContentType']
         except Exception as e:
-            logger.error(e)
-            message = f"""
-                Error getting object {key} from bucket {bucket}.
-                Make sure they exist and your bucket is in the same region as this function.
-            """
-            print(message)
-            raise e
+            if 'NoneType' in str(e):
+                logger.info(e)
+                message = f"""
+                  NoneType parsing error actual exception: {e}
+              """
+                logger.info(message)
+            else:
+                logger.error(e)
+                message = f"""
+                  Error getting object {key} from bucket {bucket}.
+                  Make sure they exist and your bucket is in the same region as this function.
+                  Actual exception: {e}
+              """
+                logger.info(message)
+                raise e
 
 
 def get_request(request):

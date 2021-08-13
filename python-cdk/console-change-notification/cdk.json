@@ -14,8 +14,46 @@
     "@aws-cdk/aws-efs:defaultEncryptionAtRest": true,
     "@aws-cdk/aws-lambda:recognizeVersionProps": true,
     "naming-prefix": "cfn-drift-detection",
-    "env_slack_webhook_url": "https://hooks.slack.com/services/HOOK",
+    "env_slack_webhook_url": "https://hooks.slack.com/services/<SLACKWEBHOOK>",
     "env_sns_topic": "no_value",
-    "cloud_trail_bucket": "cloudtrail-event-logs-bucket"
+    "cloud_trail_bucket": "cloudtrail-event-logs",
+    "cloud_trail_config": {
+      "create_trail": false,
+      "cloud_trail_name": "cloudtrail-event-log",
+      "cloud_trail_bucket": "test-bucket",
+      "cloud_trail_data_events": true,
+      "cloud_watch_log_group": "test-loggroup"
+    },
+    "kms-config": {
+      "keys": [
+        {
+          "alias": "cloudtrail-key",
+          "description": "Key used to encrypt cloudtrail",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "cloudtrail.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "cloudwatch-key",
+          "description": "Key used by default to encrypt cloudwatch logs",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "logs.amazonaws.com",
+            "cloudtrail.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "s3-bucket-key",
+          "description": "Key used to encrypt cloudtrail s3 bucket",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "s3.amazonaws.com",
+            "cloudtrail.amazonaws.com",
+            "lambda.amazonaws.com"
+          ]
+        }
+      ]
+    }
   }
 }
