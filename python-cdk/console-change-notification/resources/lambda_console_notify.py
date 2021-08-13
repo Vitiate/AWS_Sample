@@ -192,8 +192,10 @@ def get_request(request):
     for item in request:
         if 'name' in item.lower():
             return request[item]
+        elif 'groupid' in item.lower():
+            return request[item]
         else:
-            return "Unknown Item"
+            return f"Unknown Item Data:{item} add to lambda"
 
 
 def unit_test() -> None:
