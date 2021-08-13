@@ -1,8 +1,72 @@
 
 # Welcome to your CDK Python project!
 
+# To execute
+Install the sub packages for the lambda
+```
+bash ./install-lambda-resource-modules.sh
+```
+Bootstrap the cdk
+```
+cdk bootstrap
+```
+
+deploy the cdk, try a dry run first to verify that everything is setup properly
+```
+cdk synth
+cdk deploy
+
+```
 # To configure
-Add your slack webhook, or sns queue, and the cloud trail s3 bucket. This can function on a multi trail bucket.
+Edit the cdk.json
+
+# cdk.json configuration
+
+```
+    "env_slack_webhook_url": "https://hooks.slack.com/services/<SLACKWEBHOOK>", # Enter your slack webhook url or no_value
+    "env_sns_topic": "no_value",                  # Enter your sns-topic or no_value
+    "cloud_trail_bucket": "cloudtrail-event-logs",# Enter the name of the cloudtrail to monitor for management events, this bucket should exist, if it does not exist set the create_trail varaible to true
+    "cloud_trail_config": {
+      "create_trail": false,                      # Setting this to true will deploy a best practivaes compliant, cloudtrail, bucket, loggroup and all the required kms keys with appropriate permissions
+      "cloud_trail_name": "cloudtrail-event-log", # Name of the cloud trail to create
+      "cloud_trail_bucket": "test-bucket",        # Name of the s3 bucket to create
+      "cloud_trail_data_events": true,            # If true will also log data events to the trail
+      "cloud_watch_log_group": "test-loggroup"    # Name of the log group to create
+    },
+    "kms-config": {
+      "keys": [ # KMS keys are configured here, do not change the defaults or their alias's, this will break the cdk.
+        {
+          "alias": "cloudtrail-key",
+          "description": "Key used to encrypt cloudtrail",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "cloudtrail.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "cloudwatch-key",
+          "description": "Key used by default to encrypt cloudwatch logs",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "logs.amazonaws.com",
+            "cloudtrail.amazonaws.com"
+          ]
+        },
+        {
+          "alias": "s3-bucket-key",
+          "description": "Key used to encrypt cloudtrail s3 bucket",
+          "enable-key-rotation": true,
+          "service-principles": [
+            "s3.amazonaws.com",
+            "cloudtrail.amazonaws.com",
+            "lambda.amazonaws.com"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 
 This is a blank project for Python development with CDK.
 
