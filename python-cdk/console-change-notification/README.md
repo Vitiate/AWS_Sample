@@ -27,7 +27,7 @@ Edit the cdk.json
     "env_sns_topic": "no_value",                  # Enter your sns-topic or no_value
     "cloud_trail_bucket": "cloudtrail-event-logs",# Enter the name of the cloudtrail to monitor for management events, this bucket should exist, if it does not exist set the create_trail varaible to true
     "cloud_trail_config": {
-      "create_trail": false,                      # Setting this to true will deploy a best practivaes compliant, cloudtrail, bucket, loggroup and all the required kms keys with appropriate permissions
+      "create_trail": false,                      # Setting this to true will deploy a best practices compliant, cloudtrail, bucket, loggroup and all the required kms keys with appropriate permissions
       "cloud_trail_name": "cloudtrail-event-log", # Name of the cloud trail to create
       "cloud_trail_bucket": "test-bucket",        # Name of the s3 bucket to create
       "cloud_trail_data_events": true,            # If true will also log data events to the trail
