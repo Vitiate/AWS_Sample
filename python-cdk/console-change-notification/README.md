@@ -25,16 +25,15 @@ Edit the cdk.json
 ```
     "env_slack_webhook_url": "https://hooks.slack.com/services/<SLACKWEBHOOK>", # Enter your slack webhook url or no_value
     "env_sns_topic": "no_value",                  # Enter your sns-topic or no_value
-    "cloud_trail_bucket": "cloudtrail-event-logs",# Enter the name of the cloudtrail to monitor for management events, this bucket should exist, if it does not exist set the create_trail varaible to true
     "cloud_trail_config": {
       "create_trail": false,                      # Setting this to true will deploy a best practices compliant, cloudtrail, bucket, loggroup and all the required kms keys with appropriate permissions
-      "cloud_trail_name": "cloudtrail-event-log", # Name of the cloud trail to create
-      "cloud_trail_bucket": "test-bucket",        # Name of the s3 bucket to create
-      "cloud_trail_data_events": true,            # If true will also log data events to the trail
-      "cloud_watch_log_group": "test-loggroup"    # Name of the log group to create
+      "cloud_trail_name": "cloudtrail-event-log", # Enter the name of the cloudtrail to monitor for management events, this cloudtrail should exist, if it does not exist set the create_trail varaible to true
+      "cloud_trail_bucket": "test-bucket",        # Name of the s3 bucket to create. This is ignored if not creating a trail
+      "cloud_trail_data_events": true,            # If true will also log data events to the trail. This is ignored if not creating a trail
+      "cloud_watch_log_group": "test-loggroup"    # Name of the log group to create. This is ignored if not creating a trail
     },
     "kms-config": {
-      "keys": [ # KMS keys are configured here, do not change the defaults or their alias's, this will break the cdk.
+      "keys": [ # KMS keys are configured here, do not change the defaults or their alias's, this will break the cdk. This is ignored if not creating a trail
         {
           "alias": "cloudtrail-key",
           "description": "Key used to encrypt cloudtrail",
